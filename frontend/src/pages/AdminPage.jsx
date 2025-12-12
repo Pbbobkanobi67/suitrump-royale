@@ -216,7 +216,7 @@ function PlinkoSettingsSection() {
         }
 
         .option-btn.risk-low.active {
-          background: #22c55e;
+          background: #3b82f6;
         }
 
         .option-btn.risk-medium.active {

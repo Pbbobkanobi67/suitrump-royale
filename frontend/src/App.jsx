@@ -15,6 +15,7 @@ import RoulettePage from './pages/RoulettePage';
 import FaucetPage from './pages/FaucetPage';
 import PlayerStatsPage from './pages/PlayerStatsPage';
 import DocsPage from './pages/DocsPage';
+import RoyaleTestPage from './pages/RoyaleTestPage';
 import { GameProvider } from './contexts/GameContext';
 import { DemoProvider, useDemoContext } from './contexts/DemoContext';
 import { useWallet } from './hooks/useWallet';
@@ -199,6 +200,7 @@ function App() {
               <Route path="/admin" element={<AdminPage wallet={wallet} dice={dice} progressive={progressive} raffle={raffle} />} />
               <Route path="/faucet" element={<FaucetPage wallet={wallet} />} />
               <Route path="/docs" element={<DocsPage />} />
+              <Route path="/royale-test" element={<RoyaleTestPage />} />
               </Routes>
             </main>
           </div>

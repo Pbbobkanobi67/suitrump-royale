@@ -453,9 +453,9 @@ function CrashPage({ wallet }) {
 
   const getMultiplierColor = () => {
     if (gameState === 'crashed') return '#ef4444';
-    if (gameState === 'cashed') return '#22c55e';
+    if (gameState === 'cashed') return '#3b82f6';
     if (displayMultiplier >= 5) return '#fbbf24';
-    if (displayMultiplier >= 2) return '#22c55e';
+    if (displayMultiplier >= 2) return '#3b82f6';
     return '#3b82f6';
   };
 
@@ -522,7 +522,7 @@ function CrashPage({ wallet }) {
               <defs>
                 <linearGradient id="arcGradient" x1="0%" y1="100%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#22c55e" />
+                  <stop offset="100%" stopColor="#3b82f6" />
                 </linearGradient>
               </defs>
             </svg>
@@ -811,8 +811,8 @@ function CrashPage({ wallet }) {
         }
 
         .arc-path.cashed {
-          stroke: #22c55e;
-          filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.6));
+          stroke: #3b82f6;
+          filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.6));
         }
 
         /* Whale Rider */
@@ -1000,15 +1000,15 @@ function CrashPage({ wallet }) {
           display: block;
           font-size: 2rem;
           font-weight: 800;
-          color: #22c55e;
-          text-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+          color: #3b82f6;
+          text-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
         }
 
         .win-amount {
           display: block;
           font-size: 1.5rem;
           font-weight: 700;
-          color: #22c55e;
+          color: #3b82f6;
           margin-top: 5px;
         }
 
@@ -1043,23 +1043,23 @@ function CrashPage({ wallet }) {
         .mode-btn { padding: 10px 24px; background: #1e293b; border: 2px solid #334155; color: #94a3b8; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .mode-btn:first-child { border-radius: 8px 0 0 8px; }
         .mode-btn:last-child { border-radius: 0 8px 8px 0; border-left: none; }
-        .mode-btn.active { background: #22c55e; border-color: #22c55e; color: white; }
+        .mode-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
         .mode-btn:hover:not(.active) { background: #334155; }
 
         .target-presets { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
         .target-btn { padding: 8px 16px; background: #1e293b; border: 2px solid #334155; border-radius: 8px; color: #f8fafc; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .target-btn:hover:not(:disabled) { border-color: #22c55e; }
-        .target-btn.selected { background: #22c55e; border-color: #22c55e; }
+        .target-btn:hover:not(:disabled) { border-color: #3b82f6; }
+        .target-btn.selected { background: #3b82f6; border-color: #3b82f6; }
 
         .custom-target { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
         .custom-target input { width: 80px; padding: 8px; background: #334155; border: 2px solid #475569; border-radius: 8px; color: #f8fafc; font-size: 1rem; text-align: center; }
-        .custom-target input:focus { outline: none; border-color: #22c55e; }
+        .custom-target input:focus { outline: none; border-color: #3b82f6; }
         .custom-target span { color: #94a3b8; font-weight: 600; }
 
         .auto-info { margin-top: 12px; color: #94a3b8; font-size: 0.9rem; }
-        .auto-info strong { color: #22c55e; }
+        .auto-info strong { color: #3b82f6; }
 
-        .auto-status { text-align: center; margin-bottom: 15px; padding: 12px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; color: #22c55e; font-weight: 600; }
+        .auto-status { text-align: center; margin-bottom: 15px; padding: 12px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; color: #3b82f6; font-weight: 600; }
 
         .custom-bet {
           display: flex;
@@ -1119,13 +1119,13 @@ function CrashPage({ wallet }) {
         }
 
         .action-btn.cashout {
-          background: linear-gradient(135deg, #22c55e, #16a34a);
+          background: linear-gradient(135deg, #3b82f6, #0284c7);
           animation: cashoutPulse 1s ease infinite;
         }
 
         @keyframes cashoutPulse {
-          0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); }
-          50% { box-shadow: 0 0 40px rgba(34, 197, 94, 0.6); }
+          0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.4); }
+          50% { box-shadow: 0 0 40px rgba(56, 189, 248, 0.6); }
         }
 
         .action-btn.cashout:hover:not(:disabled) {
@@ -1170,13 +1170,13 @@ function CrashPage({ wallet }) {
 
         .potential-list { display: flex; flex-direction: column; gap: 8px; }
         .potential-row { display: flex; justify-content: space-between; color: #94a3b8; font-size: 0.9rem; }
-        .potential-row.highlight { color: #22c55e; font-weight: 600; }
+        .potential-row.highlight { color: #3b82f6; font-weight: 600; }
         .potential-row.jackpot { color: #fbbf24; font-weight: 600; }
 
         .history-list { display: flex; flex-direction: column; gap: 8px; }
         .no-history { color: #64748b; font-size: 0.9rem; text-align: center; padding: 20px; }
         .history-item { display: flex; justify-content: space-between; padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; }
-        .history-item.win { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+        .history-item.win { background: rgba(56, 189, 248, 0.1); color: #3b82f6; }
         .history-item.crash { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
         .history-mult { font-weight: 600; }
 

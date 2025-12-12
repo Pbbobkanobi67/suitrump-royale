@@ -647,7 +647,7 @@ function SlotsPage({ wallet }) {
         .spin-btn { width: 100%; max-width: 300px; padding: 16px 32px; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 12px; cursor: pointer; display: block; margin: 20px auto 0; }
         .spin-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(59,130,246,0.4); }
         .spin-btn:disabled { opacity: 0.7; cursor: not-allowed; }
-        .spin-btn.reveal { background: linear-gradient(135deg, #22c55e, #16a34a); animation: revealPulse 1s infinite; }
+        .spin-btn.reveal { background: linear-gradient(135deg, #3b82f6, #0284c7); animation: revealPulse 1s infinite; }
         @keyframes revealPulse { 0%,100% { box-shadow: 0 0 20px rgba(34,197,94,0.5); } 50% { box-shadow: 0 0 40px rgba(34,197,94,0.8); } }
         .error-message { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; padding: 12px; border-radius: 8px; margin-top: 15px; text-align: center; }
         .slots-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
@@ -656,7 +656,7 @@ function SlotsPage({ wallet }) {
         .payout-list, .stats-list, .potential-list { display: flex; flex-direction: column; gap: 8px; }
         .payout-row, .stat-row, .potential-row { display: flex; justify-content: space-between; color: #94a3b8; font-size: 0.9rem; }
         .payout-row.jackpot, .potential-row.jackpot { color: #fbbf24; font-weight: 600; }
-        .stat-row.highlight { color: #22c55e; font-weight: 600; }
+        .stat-row.highlight { color: #3b82f6; font-weight: 600; }
 
         /* Result Overlay Styles */
         .result-overlay {
@@ -694,8 +694,8 @@ function SlotsPage({ wallet }) {
         @keyframes jackpotGlow { from { box-shadow: 0 0 60px rgba(251, 191, 36, 0.5); } to { box-shadow: 0 0 100px rgba(251, 191, 36, 0.8); } }
 
         .result-overlay.win .result-modal {
-          border-color: #22c55e;
-          box-shadow: 0 0 40px rgba(34, 197, 94, 0.4);
+          border-color: #3b82f6;
+          box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
         }
 
         .result-overlay.loss .result-modal {
@@ -711,7 +711,7 @@ function SlotsPage({ wallet }) {
         }
         .jackpot-banner { color: #fbbf24; animation: jackpotPulse 0.5s ease infinite alternate; }
         @keyframes jackpotPulse { from { transform: scale(1); } to { transform: scale(1.05); } }
-        .win-banner { color: #22c55e; }
+        .win-banner { color: #3b82f6; }
         .loss-banner { color: #94a3b8; font-size: 1.5rem; }
 
         .result-symbols {
@@ -738,7 +738,7 @@ function SlotsPage({ wallet }) {
           margin: 20px 0 10px;
         }
         .jackpot-amount { color: #fbbf24; font-size: 3rem; }
-        .win-amount { color: #22c55e; }
+        .win-amount { color: #3b82f6; }
         .loss-amount { color: #ef4444; font-size: 1.75rem; }
 
         .result-subtitle {
@@ -767,7 +767,7 @@ function SlotsPage({ wallet }) {
           background: linear-gradient(135deg, #f59e0b, #d97706);
         }
         .result-overlay.win .result-btn {
-          background: linear-gradient(135deg, #22c55e, #16a34a);
+          background: linear-gradient(135deg, #3b82f6, #0284c7);
         }
 
         @media (max-width: 600px) {

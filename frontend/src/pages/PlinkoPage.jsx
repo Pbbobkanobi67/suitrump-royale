@@ -973,7 +973,7 @@ function PlinkoPage({ wallet }) {
     if (mult >= 10) return '#ef4444';
     if (mult >= 5) return '#f97316';
     if (mult >= 2) return '#eab308';
-    if (mult >= 1) return '#22c55e';
+    if (mult >= 1) return '#3b82f6';
     return '#6b7280';
   };
 
@@ -1039,7 +1039,7 @@ function PlinkoPage({ wallet }) {
                     return (
                       <>
                         <line x1="0" y1={zeroY} x2="100" y2={zeroY} stroke="#475569" strokeWidth="0.5" strokeDasharray="2,2" />
-                        <path d={pathPoints} fill="none" stroke={sessionStats.totalProfit >= 0 ? '#22c55e' : '#ef4444'} strokeWidth="2" />
+                        <path d={pathPoints} fill="none" stroke={sessionStats.totalProfit >= 0 ? '#3b82f6' : '#ef4444'} strokeWidth="2" />
                       </>
                     );
                   })()}
@@ -1402,9 +1402,9 @@ function PlinkoPage({ wallet }) {
           font-size: 1rem;
           font-weight: 700;
         }
-        .live-stat-value.profit-positive { color: #22c55e; }
+        .live-stat-value.profit-positive { color: #3b82f6; }
         .live-stat-value.profit-negative { color: #ef4444; }
-        .live-stat-value.wins { color: #22c55e; }
+        .live-stat-value.wins { color: #3b82f6; }
         .live-stat-value.losses { color: #ef4444; }
         .profit-chart {
           height: 40px;
@@ -1490,7 +1490,7 @@ function PlinkoPage({ wallet }) {
           z-index: 10;
         }
 
-        .result-overlay.win { border: 3px solid #22c55e; }
+        .result-overlay.win { border: 3px solid #3b82f6; }
         .result-overlay.lose { border: 3px solid #ef4444; }
 
         @keyframes resultPop {
@@ -1500,7 +1500,7 @@ function PlinkoPage({ wallet }) {
 
         .result-mult { display: block; font-size: 3rem; font-weight: 800; color: #f8fafc; }
         .result-amount { display: block; font-size: 1.5rem; font-weight: 600; margin-top: 10px; }
-        .result-overlay.win .result-amount { color: #22c55e; }
+        .result-overlay.win .result-amount { color: #3b82f6; }
         .result-overlay.lose .result-amount { color: #ef4444; }
 
         .plinko-controls {
@@ -1548,7 +1548,7 @@ function PlinkoPage({ wallet }) {
         .risk-btn:hover, .row-btn:hover { border-color: #3b82f6; }
         .risk-btn.active, .row-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
 
-        .risk-btn.risk-low.active { background: #22c55e; border-color: #22c55e; }
+        .risk-btn.risk-low.active { background: #3b82f6; border-color: #3b82f6; }
         .risk-btn.risk-medium.active { background: #eab308; border-color: #eab308; color: #0f172a; }
         .risk-btn.risk-high.active { background: #ef4444; border-color: #ef4444; }
 
@@ -1565,7 +1565,7 @@ function PlinkoPage({ wallet }) {
         .custom-bet span { color: #94a3b8; font-weight: 600; font-size: 0.85rem; }
 
         .potential-win { text-align: center; color: #94a3b8; margin: 15px 0; }
-        .potential-win strong { color: #22c55e; }
+        .potential-win strong { color: #3b82f6; }
 
         .action-btn {
           width: 100%;
@@ -1652,12 +1652,12 @@ function PlinkoPage({ wallet }) {
         .payout-table th, .payout-table td { padding: 10px; text-align: center; border-bottom: 1px solid rgba(59,130,246,0.2); }
         .payout-table th { color: #94a3b8; font-weight: 600; font-size: 0.85rem; }
         .payout-table td { color: #f8fafc; }
-        .payout-table .jackpot-row td { color: #22c55e; font-weight: 700; }
+        .payout-table .jackpot-row td { color: #3b82f6; font-weight: 700; }
 
         .distribution-list { list-style: none; padding: 0; margin: 0; color: #94a3b8; }
         .distribution-list li { padding: 8px 0; border-bottom: 1px solid rgba(59,130,246,0.1); }
         .distribution-list li:last-child { border-bottom: none; }
-        .distribution-list .highlight { color: #22c55e; font-weight: 600; }
+        .distribution-list .highlight { color: #3b82f6; font-weight: 600; }
 
         .recording-controls {
           margin-top: 20px;
@@ -1679,7 +1679,7 @@ function PlinkoPage({ wallet }) {
           font-size: 0.8rem;
         }
         .recording-status {
-          color: #22c55e;
+          color: #3b82f6;
           font-size: 0.85rem;
         }
         .recording-buttons {

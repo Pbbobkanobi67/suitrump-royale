@@ -7,30 +7,31 @@
 }
 
 :root {
-  /* SUITRUMP Color Palette */
-  --primary-green: #3c574b;
-  --dark-green: #0f2c23;
-  --accent-lime: #e2fea5;
-  --secondary-cream: #f8ffe8;
-  --bg-dark: #0f2c23;
-  --bg-card: #2d4a3f;
-  --text-light: #f8ffe8;
-  --text-gray: #a8c4b8;
-  --text-muted: #6b8f7e;
-  --success: #22c55e;
+  /* SUITRUMP Blue Theme - 4 Shades */
+  --bg-darkest: #0a1628;
+  --bg-dark: #0a1628;
+  --bg-card: #1e3a5f;
+  --primary: #3b82f6;
+  --primary-blue: #3b82f6;
+  --light: #60a5fa;
+  --light-blue: #60a5fa;
+  --text-light: #e0f2fe;
+  --text-gray: #60a5fa;
+  --dark-blue: #1e3a5f;
+  --success: #3b82f6;
   --error: #ef4444;
   --warning: #f59e0b;
-  --border-color: #4a6b5d;
-
-  /* Legacy aliases for compatibility */
-  --primary-blue: #3c574b;
-  --dark-blue: #0f2c23;
-  --light-blue: #e2fea5;
+  --border-color: #1e3a5f;
+  --accent-lime: #60a5fa;
+  --accent-bright: #3b82f6;
+  --primary-green: #3b82f6;
+  --dark-green: #0a1628;
+  --secondary-cream: #e0f2fe;
 }
 
 body {
   font-family: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background: var(--bg-dark);
+  background: linear-gradient(180deg, #0a1628 0%, #0f1f38 50%, #1e3a5f 100%); background-attachment: fixed; background-attachment: fixed;
   color: var(--text-light);
   line-height: 1.6;
 }
@@ -51,8 +52,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Header - SUITRUMP Style */
 .header {
-  background: rgba(45, 74, 63, 0.9);
-  border: 3px solid var(--accent-lime);
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 2px solid #3b82f6;
   border-radius: 16px;
   padding: 20px 40px;
   margin-bottom: 20px;
@@ -107,13 +108,14 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1rem;
   font-weight: 600;
   padding: 10px 20px;
-  background: rgba(226, 254, 165, 0.1);
+  background: rgba(96, 165, 250, 0.1);
   border-radius: 12px;
   border: 2px solid var(--accent-lime);
 }
 
 /* Navigation - SUITRUMP Style */
 .navigation {
+  border: 2px solid #3b82f6 !important;
   background: var(--bg-card);
   border-radius: 16px;
   padding: 15px 30px;
@@ -138,7 +140,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .nav-link:hover {
   color: var(--accent-lime);
-  background: rgba(226, 254, 165, 0.1);
+  background: rgba(96, 165, 250, 0.1);
 }
 
 .nav-link.active {
@@ -169,7 +171,7 @@ h1, h2, h3, h4, h5, h6 {
 .btn-primary:hover:not(:disabled) {
   background: #d4f490;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(226, 254, 165, 0.4);
+  box-shadow: 0 6px 20px rgba(96, 165, 250, 0.4);
 }
 
 .btn-secondary {
@@ -179,7 +181,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: rgba(226, 254, 165, 0.1);
+  background: rgba(96, 165, 250, 0.1);
 }
 
 .btn-success {
@@ -188,7 +190,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #059669;
+  background: #1e3a5f;
 }
 
 .btn-warning {
@@ -219,7 +221,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Cards - Matching SUITRUMP Theme */
 .card {
-  background: var(--bg-card);
+  background: linear-gradient(135deg, #1e293b, #0f172a);
   border-radius: 16px;
   padding: 25px;
   margin-bottom: 25px;
@@ -449,6 +451,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Bet Info */
 .bet-info {
+  border: none !important;
   background: rgba(59, 130, 246, 0.1);
   border-radius: 12px;
   padding: 15px;
@@ -590,7 +593,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .stat-card {
-  background: rgba(59, 130, 246, 0.1);
+  background: linear-gradient(135deg, #1e293b, #0f172a);
   padding: 15px;
   border-radius: 10px;
   border-left: 4px solid var(--primary-blue);
@@ -749,7 +752,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .status-badge.status-won {
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(59, 130, 246, 0.2);
   color: var(--success);
 }
 
@@ -958,7 +961,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .message.success {
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(59, 130, 246, 0.2);
   color: var(--success);
   border: 1px solid var(--success);
 }
@@ -1066,7 +1069,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(59, 130, 246, 0.1);
+  background: linear-gradient(135deg, #1e293b, #0f172a);
   padding: 12px 10px;
   border-radius: 10px;
   border: 1px solid var(--border-color);
@@ -1348,6 +1351,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .navigation {
+  border: 2px solid #3b82f6 !important;
     padding: 10px 15px;
   }
 
@@ -1394,7 +1398,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .progressive-card {
-  background: linear-gradient(135deg, var(--bg-card) 0%, #1a365d 100%);
+  background: linear-gradient(135deg, #1e293b, #0f172a);
   border-radius: 16px;
   padding: 30px;
   border: 2px solid var(--primary-blue);
@@ -1523,18 +1527,18 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dice-with-value.matched .dice-value {
-  background: rgba(16, 185, 129, 0.3);
-  border-color: #10b981;
-  color: #10b981;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  background: rgba(59, 130, 246, 0.3);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
 }
 
 @keyframes match-pulse {
   0%, 100% {
-    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6));
   }
   50% {
-    filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.9));
+    filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.9));
   }
 }
 
@@ -1609,7 +1613,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .result-display.win {
-  background: rgba(34, 197, 94, 0.15);
+  background: rgba(59, 130, 246, 0.15);
   border: 1px solid var(--success);
 }
 
@@ -1739,7 +1743,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Glowing Button Effect */
 .btn-glow {
-  background: #2563eb;
+  background: #3b82f6;
   width: 100%;
   padding: 12px 20px;
   font-weight: 600;
@@ -1747,7 +1751,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-glow:hover {
-  background: #1d4ed8;
+  background: #1e3a5f;
 }
 
 @keyframes btn-outer-glow {
@@ -1784,7 +1788,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* How to Play Card */
 .how-to-play-card {
-  background: linear-gradient(135deg, var(--bg-card) 0%, #1a365d 100%);
+  background: linear-gradient(135deg, #1e293b, #0f172a);
   border-radius: 16px;
   padding: 30px;
   margin-top: 20px;
@@ -2271,7 +2275,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .result-display.green {
-  background: linear-gradient(135deg, #059669, #047857);
+  background: linear-gradient(135deg, #1e3a5f, #047857);
 }
 
 .result-number {
@@ -2322,7 +2326,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .history-number.green {
-  background: #059669;
+  background: #1e3a5f;
 }
 
 .no-history {
@@ -2435,7 +2439,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .roulette-number.green {
-  background: linear-gradient(135deg, #059669, #047857);
+  background: linear-gradient(135deg, #1e3a5f, #047857);
   height: 100%;
   width: 35px;
 }
@@ -2576,13 +2580,13 @@ h1, h2, h3, h4, h5, h6 {
   width: 100%;
   padding: 18px;
   font-size: 1.3rem;
-  background: linear-gradient(135deg, #059669, #047857);
+  background: linear-gradient(135deg, #1e3a5f, #047857);
   border: none;
   margin-bottom: 20px;
 }
 
 .btn-spin:hover:not(:disabled) {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, #3b82f6, #1e3a5f);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
 }
@@ -2601,7 +2605,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .spin-result.win {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2));
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(5, 150, 105, 0.2));
   border: 2px solid var(--success);
 }
 
@@ -2649,7 +2653,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .result-num.green {
-  background: #059669;
+  background: #1e3a5f;
   color: white;
 }
 
@@ -2864,6 +2868,7 @@ h1, h2, h3, h4, h5, h6 {
 /* Mobile Navigation Fix */
 @media (max-width: 768px) {
   .navigation {
+  border: 2px solid #3b82f6 !important;
     padding: 10px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -3197,6 +3202,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .bet-info {
+  border: none !important;
     padding: 12px;
   }
 
@@ -3670,4 +3676,499 @@ h1, h2, h3, h4, h5, h6 {
     height: 35px;
     font-size: 0.65rem;
   }
+}
+
+/* ========================================
+   SUITRUMP BLUE THEME - Unified Section Styling
+   All sections outlined in blue like CrashPage
+   ======================================== */
+
+/* Main game container */
+.dice-game,
+.game-container,
+.main-game-area {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+  padding: 25px !important;
+  margin-bottom: 20px !important;
+}
+
+/* Betting controls */
+.bet-section,
+.betting-area,
+.bet-controls-section {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+  padding: 20px !important;
+}
+
+/* Results display */
+.result-section,
+.dice-result,
+.result-display {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+}
+
+/* Stats panels */
+.stats-panel,
+.game-stats,
+.player-stats {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+  padding: 20px !important;
+}
+
+/* Info cards */
+.info-box,
+.help-box,
+.odds-display {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 12px !important;
+  padding: 15px !important;
+}
+
+/* Jackpot display */
+.jackpot-display,
+.prize-pool {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+}
+
+/* Ticket/entry sections */
+.ticket-section,
+.entry-form {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+  padding: 20px !important;
+}
+
+/* Winners list */
+.winners-section,
+.winners-list,
+.leaderboard {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+}
+
+/* Timer displays */
+.timer-section,
+.countdown {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 12px !important;
+}
+
+/* ========================================
+   DICE PAGE - Blue Outlined Sections
+   ======================================== */
+
+.dice-page {
+  width: 100%;
+}
+
+.dice-game-box {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+  padding: 25px !important;
+  margin-bottom: 20px !important;
+}
+
+.dice-game-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+}
+
+.dice-display-area {
+  background: linear-gradient(180deg, #0f172a, #1e293b) !important;
+  border: 2px solid #3b82f6;
+  border-radius: 16px !important;
+  padding: 30px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 350px;
+}
+
+.bet-controls-area {
+  border: 2px solid #3b82f6;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+  padding: 25px !important;
+}
+
+.dice-idle {
+  text-align: center;
+}
+
+.dice-idle p {
+  color: #60a5fa;
+  margin-top: 20px;
+  font-size: 1.1rem;
+}
+
+.how-to-play-box {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+  padding: 30px !important;
+  margin-bottom: 20px !important;
+}
+
+.how-to-play-box h3 {
+  color: #60a5fa !important;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+.how-to-steps {
+  color: #e0f2fe;
+  line-height: 1.8;
+  padding-left: 20px;
+  margin-bottom: 25px;
+}
+
+.how-to-steps li {
+  margin-bottom: 10px;
+}
+
+.how-to-steps strong {
+  color: #60a5fa;
+}
+
+.bet-types-table {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid #3b82f6;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.bet-types-table h4 {
+  color: #60a5fa;
+  margin-bottom: 15px;
+}
+
+.bet-types-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bet-types-table th,
+.bet-types-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #1e3a5f;
+  color: #e0f2fe;
+}
+
+.bet-types-table th {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.bet-types-table .multiplier {
+  color: #3b82f6;
+  font-weight: 700;
+}
+
+.house-edge-note {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin-top: 15px;
+  font-style: italic;
+}
+
+/* Demo mode elements */
+.demo-mode-banner {
+  background: linear-gradient(135deg, #1e3a5f, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 12px !important;
+  padding: 15px 20px !important;
+  margin-bottom: 20px !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.demo-game-balance {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.demo-game-balance .balance-label {
+  color: #94a3b8;
+}
+
+.demo-game-balance .balance-value {
+  color: #60a5fa;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Banners */
+.connect-banner,
+.error-banner,
+.warning-banner {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 12px !important;
+  padding: 15px 20px !important;
+  margin-bottom: 20px !important;
+  text-align: center;
+}
+
+.error-banner {
+  border-color: #ef4444 !important;
+}
+
+.warning-banner {
+  border-color: #f59e0b !important;
+}
+
+/* GameStats component */
+.game-stats-box {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+  padding: 25px !important;
+  margin-bottom: 20px !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .dice-game-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dice-display-area {
+    min-height: 280px;
+  }
+}
+
+/* GameStats component */
+.game-stats {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 16px !important;
+  padding: 25px !important;
+  margin-bottom: 20px !important;
+}
+
+.game-stats h3 {
+  color: #60a5fa !important;
+  margin-bottom: 20px;
+  font-size: 1.3rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.stat-card {
+  background: linear-gradient(180deg, #0f172a, #1e293b) !important;
+  border: 1px solid #3b82f6 !important;
+  border-radius: 12px !important;
+  padding: 15px !important;
+  text-align: center;
+}
+
+.stat-card .stat-label {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.stat-card .stat-value {
+  color: #e0f2fe;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.limits-info {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #1e3a5f;
+  color: #94a3b8;
+}
+
+.limits-info strong {
+  color: #60a5fa;
+}
+
+.paused-warning {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+/* ========================================
+   PLACE YOUR BET - Single Outline Only
+   ======================================== */
+
+.bet-controls {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 16px !important;
+  padding: 25px !important;
+}
+
+.bet-controls h3 {
+  color: #60a5fa !important;
+  font-size: 1.4rem !important;
+  margin-bottom: 20px !important;
+  border: none !important;
+}
+
+.bet-type-section,
+.number-section,
+.amount-section {
+  background: transparent !important;
+  border: none !important;
+  margin-bottom: 15px !important;
+}
+
+.bet-type-section label,
+.number-section label,
+.amount-section label {
+  color: #60a5fa !important;
+  font-size: 0.9rem !important;
+  margin-bottom: 8px !important;
+  display: block !important;
+}
+
+.bet-type-buttons,
+.number-buttons,
+.quick-amounts {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.bet-type-btn,
+.number-btn,
+.quick-amount-btn {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border: 1px solid #3b82f6 !important;
+  border-radius: 8px !important;
+  color: #e0f2fe !important;
+  padding: 10px 16px !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+
+.bet-type-btn:hover,
+.number-btn:hover,
+.quick-amount-btn:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+.bet-type-btn.active,
+.number-btn.active {
+  background: #3b82f6 !important;
+  color: white !important;
+}
+
+.amount-input-wrapper input {
+  width: 100% !important;
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid #3b82f6 !important;
+  border-radius: 8px !important;
+  color: #e0f2fe !important;
+  padding: 12px 15px !important;
+  font-size: 1rem !important;
+  margin-bottom: 10px !important;
+}
+
+.amount-input-wrapper input:focus {
+  outline: none !important;
+  border-color: #60a5fa !important;
+}
+
+.limit-info {
+  color: #94a3b8 !important;
+  font-size: 0.85rem !important;
+  display: block !important;
+  margin-top: 5px !important;
+}
+
+/* Bet Info - NO BORDER */
+.bet-info {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 15px 0 !important;
+  margin: 15px 0 !important;
+  border-top: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.bet-info .info-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 8px 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.bet-info .info-row span:first-child {
+  color: #94a3b8 !important;
+}
+
+.bet-info .info-row .condition,
+.bet-info .info-row .multiplier,
+.bet-info .info-row .payout {
+  color: #e0f2fe !important;
+  font-weight: 600 !important;
+}
+
+.bet-info .info-row .multiplier {
+  color: #60a5fa !important;
+}
+
+/* Place Bet Button */
+.bet-controls .btn-primary,
+.bet-controls .btn-large {
+  width: 100% !important;
+  background: #3b82f6 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  color: white !important;
+  padding: 15px !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background 0.2s !important;
+}
+
+.bet-controls .btn-primary:hover,
+.bet-controls .btn-large:hover {
+  background: #2563eb !important;
+}
+
+.bet-controls .btn-primary:disabled,
+.bet-controls .btn-large:disabled {
+  background: #475569 !important;
+  cursor: not-allowed !important;
 }

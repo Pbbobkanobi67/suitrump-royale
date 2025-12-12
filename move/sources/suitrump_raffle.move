@@ -10,6 +10,7 @@ module suitrump_royale::suitrump_raffle {
     use sui::random::{Self, Random};
     use sui::table::{Self, Table};
     use sui::clock::{Self, Clock};
+    use std::vector;
 
     // ===== Error Codes =====
     const EInsufficientFunds: u64 = 0;
@@ -83,7 +84,7 @@ module suitrump_royale::suitrump_raffle {
             status: STATUS_ACTIVE,
             total_tickets: 0,
             ticket_holders: table::new(ctx),
-            participants: vector::empty(),
+            participants: vector[],
             end_time: clock::timestamp_ms(clock) + ROUND_DURATION_MS,
             winner: @0x0,
             total_rounds: 0,
@@ -214,7 +215,7 @@ module suitrump_royale::suitrump_raffle {
         };
 
         // Reset state
-        house.participants = vector::empty();
+        house.participants = vector[];
         house.total_tickets = 0;
         house.round_id = house.round_id + 1;
         house.status = STATUS_ACTIVE;

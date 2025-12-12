@@ -4,10 +4,10 @@ import { useGameContext } from '../contexts/GameContext';
 
 // Game color mapping
 const GAME_COLORS = {
-  dice: 'lime',
+  dice: 'cyan',
   progressive: 'gold',
   raffle: 'purple',
-  slots: 'green',
+  slots: 'blue',
   keno: 'cyan',
   crash: 'orange',
   plinko: 'teal',
@@ -48,7 +48,7 @@ function CasinoPage({ wallet, dice, progressive, raffle }) {
       description: game.description,
       icon: getGameIcon(game.id),
       path: game.route,
-      color: GAME_COLORS[game.id] || 'lime',
+      color: GAME_COLORS[game.id] || 'cyan',
       houseEdge: game.houseEdge
     };
 
