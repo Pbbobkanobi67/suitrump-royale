@@ -6079,3 +6079,643 @@ body {
     font-size: 0.65rem !important;
   }
 }
+
+/* ===========================================
+   DICE PAGE & PROGRESSIVE PAGE - MOBILE FIXES
+   =========================================== */
+
+/* Dice Page Mobile - 768px */
+@media (max-width: 768px) {
+  /* Dice Page Container */
+  .dice-page {
+    padding: 0 !important;
+  }
+
+  /* Demo Mode Banner */
+  .demo-mode-banner {
+    padding: 12px 15px !important;
+    font-size: 0.85rem !important;
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 8px !important;
+  }
+
+  .demo-mode-banner .demo-icon {
+    font-size: 1.5rem !important;
+  }
+
+  .demo-mode-banner .demo-text {
+    font-size: 0.8rem !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Main Game Box */
+  .dice-game-box {
+    padding: 15px !important;
+    border-radius: 12px !important;
+    margin-bottom: 15px !important;
+  }
+
+  /* Game Grid - Stack Vertically */
+  .dice-game-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  /* Dice Display Area */
+  .dice-display-area {
+    min-height: 200px !important;
+    padding: 15px !important;
+  }
+
+  .dice-idle {
+    text-align: center !important;
+  }
+
+  .dice-idle p {
+    font-size: 0.95rem !important;
+    margin-top: 10px !important;
+  }
+
+  /* Bet Controls Area */
+  .bet-controls-area {
+    padding: 15px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Demo Balance Display */
+  .demo-game-balance {
+    padding: 10px 15px !important;
+    margin-bottom: 15px !important;
+    text-align: center !important;
+    background: rgba(139, 92, 246, 0.15) !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  }
+
+  .demo-game-balance .balance-label {
+    display: block !important;
+    font-size: 0.8rem !important;
+    color: #c4b5fd !important;
+    margin-bottom: 4px !important;
+  }
+
+  .demo-game-balance .balance-value {
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+    color: #a78bfa !important;
+  }
+
+  /* Bet Controls */
+  .bet-controls h3 {
+    font-size: 1.1rem !important;
+    margin-bottom: 1rem !important;
+    text-align: center !important;
+  }
+
+  /* Bet Type Buttons */
+  .bet-type-buttons {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .bet-type-btn {
+    padding: 10px 8px !important;
+    font-size: 0.85rem !important;
+    text-align: center !important;
+  }
+
+  /* Number Buttons */
+  .number-buttons {
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .number-btn {
+    padding: 10px 8px !important;
+    font-size: 0.9rem !important;
+    min-width: unset !important;
+  }
+
+  /* Amount Input */
+  .amount-input-wrapper input {
+    padding: 12px !important;
+    font-size: 1rem !important;
+  }
+
+  /* Quick Amount Buttons */
+  .quick-amounts {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .quick-amount-btn {
+    padding: 8px 4px !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Bet Info Box */
+  .bet-info {
+    padding: 12px !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .info-row {
+    font-size: 0.85rem !important;
+    padding: 6px 0 !important;
+  }
+
+  /* Place Bet Button */
+  .bet-controls .btn-primary {
+    width: 100% !important;
+    padding: 14px !important;
+    font-size: 1rem !important;
+  }
+
+  /* Roll Controls */
+  .roll-controls {
+    padding: 15px !important;
+  }
+
+  .roll-controls h3 {
+    font-size: 1.1rem !important;
+  }
+
+  .pending-bet-info {
+    padding: 12px !important;
+    font-size: 0.9rem !important;
+  }
+
+  .pending-bet-info p {
+    margin: 4px 0 !important;
+  }
+
+  .roll-buttons {
+    gap: 10px !important;
+  }
+
+  .roll-buttons .btn {
+    padding: 14px !important;
+    font-size: 1rem !important;
+  }
+
+  /* Result Display */
+  .dice-result-display {
+    padding: 15px !important;
+    text-align: center !important;
+  }
+
+  .dice-result-display .result-number {
+    font-size: 3rem !important;
+  }
+
+  .dice-result-display .result-text {
+    font-size: 1rem !important;
+  }
+
+  /* Game Stats Box */
+  .game-stats {
+    padding: 15px !important;
+    border-radius: 12px !important;
+    margin-bottom: 15px !important;
+  }
+
+  .game-stats h3 {
+    font-size: 1.1rem !important;
+    margin-bottom: 15px !important;
+  }
+
+  .game-stats .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .game-stats .stat-card {
+    padding: 12px 15px !important;
+  }
+
+  .game-stats .stat-label {
+    font-size: 0.8rem !important;
+  }
+
+  .game-stats .stat-value {
+    font-size: 1.2rem !important;
+  }
+
+  /* How to Play Box */
+  .how-to-play-box {
+    padding: 20px 15px !important;
+    border-radius: 12px !important;
+    margin-bottom: 15px !important;
+  }
+
+  .how-to-play-box h3 {
+    font-size: 1.1rem !important;
+    margin-bottom: 15px !important;
+    text-align: center !important;
+  }
+
+  .how-to-steps {
+    margin-bottom: 20px !important;
+  }
+
+  .how-to-steps li {
+    font-size: 0.85rem !important;
+    padding: 6px 0 !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Bet Types Table */
+  .bet-types-table {
+    margin-top: 15px !important;
+    padding-top: 15px !important;
+    overflow-x: auto !important;
+  }
+
+  .bet-types-table h4 {
+    font-size: 1rem !important;
+    margin-bottom: 10px !important;
+    text-align: center !important;
+  }
+
+  .bet-types-table table {
+    min-width: 280px !important;
+  }
+
+  .bet-types-table th,
+  .bet-types-table td {
+    padding: 8px 10px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .house-edge-note {
+    font-size: 0.75rem !important;
+    text-align: center !important;
+    margin-top: 10px !important;
+  }
+
+  /* Error/Warning Banners */
+  .error-banner,
+  .warning-banner,
+  .connect-banner {
+    padding: 12px !important;
+    font-size: 0.9rem !important;
+    border-radius: 10px !important;
+    margin-bottom: 15px !important;
+  }
+
+  .btn-connect-banner {
+    padding: 12px 20px !important;
+    font-size: 1rem !important;
+  }
+}
+
+/* Progressive Page Mobile - 768px */
+@media (max-width: 768px) {
+  /* Progressive Page Container */
+  .progressive-page-v2 {
+    padding: 0 !important;
+  }
+
+  /* Main Card */
+  .progressive-card {
+    padding: 15px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Jackpot Section */
+  .progressive-card .jackpot-section {
+    margin-bottom: 20px !important;
+    padding-bottom: 20px !important;
+  }
+
+  .progressive-card .jackpot-label {
+    font-size: 0.8rem !important;
+    letter-spacing: 2px !important;
+  }
+
+  .progressive-card .jackpot-amount {
+    font-size: 2rem !important;
+    margin-bottom: 15px !important;
+  }
+
+  /* Payout Boxes */
+  .payout-boxes {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .payout-box {
+    padding: 10px 8px !important;
+    max-width: none !important;
+  }
+
+  .payout-box .box-label {
+    font-size: 0.65rem !important;
+  }
+
+  .payout-box .box-value {
+    font-size: 0.85rem !important;
+  }
+
+  /* Section Titles */
+  .section-title {
+    font-size: 0.85rem !important;
+    letter-spacing: 1px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Dice Display - Target and Roll */
+  .progressive-card .dice-display {
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+
+  .dice-with-value {
+    gap: 5px !important;
+  }
+
+  /* Make dice smaller on mobile */
+  .dice-with-value canvas,
+  .dice-with-value .dice-3d {
+    width: 60px !important;
+    height: 60px !important;
+  }
+
+  .dice-value {
+    padding: 5px 12px !important;
+    font-size: 1.1rem !important;
+    min-width: 40px !important;
+  }
+
+  .dice-placeholder-box {
+    width: 60px !important;
+    height: 60px !important;
+    font-size: 1.5rem !important;
+  }
+
+  /* Target Section */
+  .target-section {
+    padding: 15px 0 !important;
+  }
+
+  /* Roll Section */
+  .roll-section {
+    padding: 15px 0 !important;
+    margin-bottom: 15px !important;
+  }
+
+  /* Result Display */
+  .result-display {
+    padding: 12px !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+
+  .result-matches {
+    font-size: 1rem !important;
+  }
+
+  .result-payout {
+    font-size: 1rem !important;
+  }
+
+  .jackpot-text {
+    font-size: 1.2rem !important;
+    width: 100% !important;
+    text-align: center !important;
+  }
+
+  .auto-roll-progress {
+    padding: 8px 15px !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Buy Section */
+  .buy-section {
+    padding-top: 15px !important;
+  }
+
+  .buy-options {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .buy-option {
+    max-width: none !important;
+    min-width: unset !important;
+    padding: 15px !important;
+  }
+
+  .option-header {
+    margin-bottom: 10px !important;
+  }
+
+  .option-icon {
+    font-size: 1.2rem !important;
+  }
+
+  .option-title {
+    font-size: 0.95rem !important;
+  }
+
+  .option-details {
+    font-size: 0.85rem !important;
+    margin-bottom: 12px !important;
+    min-height: 40px !important;
+  }
+
+  .auto-roll-input {
+    width: 45px !important;
+    padding: 5px 6px !important;
+    font-size: 0.9rem !important;
+  }
+
+  .btn-glow,
+  .btn-danger {
+    padding: 12px 16px !important;
+    font-size: 0.95rem !important;
+  }
+
+  .connect-prompt {
+    padding: 15px !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* Status Message */
+  .status-message {
+    padding: 10px 15px !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* How to Play Card */
+  .how-to-play-card {
+    padding: 15px !important;
+    margin-top: 15px !important;
+    border-radius: 12px !important;
+  }
+
+  .how-to-play-title {
+    font-size: 1.1rem !important;
+    margin-bottom: 15px !important;
+    text-align: center !important;
+  }
+
+  .how-to-play-content {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  .instructions-list li {
+    font-size: 0.85rem !important;
+    margin-bottom: 10px !important;
+    padding-left: 20px !important;
+  }
+
+  .payout-column h3,
+  .jackpot-win-column h3 {
+    font-size: 0.95rem !important;
+    margin-bottom: 12px !important;
+  }
+
+  .payout-table th,
+  .payout-table td {
+    padding: 8px 10px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .distribution-list li {
+    font-size: 0.8rem !important;
+    padding: 6px 0 !important;
+    padding-left: 12px !important;
+  }
+}
+
+/* Extra Small Screens - Dice & Progressive */
+@media (max-width: 480px) {
+  /* Dice Page */
+  .dice-game-box {
+    padding: 10px !important;
+  }
+
+  .dice-display-area {
+    min-height: 150px !important;
+    padding: 10px !important;
+  }
+
+  .bet-controls-area {
+    padding: 10px !important;
+  }
+
+  .bet-type-buttons {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .bet-type-btn {
+    padding: 8px 6px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .number-buttons {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .quick-amounts {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .quick-amount-btn {
+    padding: 6px 2px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .bet-info .info-row {
+    font-size: 0.8rem !important;
+  }
+
+  .game-stats .stat-value {
+    font-size: 1rem !important;
+  }
+
+  /* Progressive Page */
+  .progressive-card {
+    padding: 10px !important;
+  }
+
+  .progressive-card .jackpot-amount {
+    font-size: 1.6rem !important;
+  }
+
+  .payout-boxes {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+
+  .payout-box {
+    padding: 8px 6px !important;
+  }
+
+  .payout-box .box-label {
+    font-size: 0.6rem !important;
+  }
+
+  .payout-box .box-value {
+    font-size: 0.75rem !important;
+  }
+
+  .progressive-card .dice-display {
+    gap: 5px !important;
+  }
+
+  .dice-with-value canvas,
+  .dice-with-value .dice-3d {
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  .dice-value {
+    padding: 4px 8px !important;
+    font-size: 0.9rem !important;
+    min-width: 35px !important;
+  }
+
+  .dice-placeholder-box {
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 1.2rem !important;
+  }
+
+  .buy-option {
+    padding: 12px !important;
+  }
+
+  .option-details {
+    min-height: 35px !important;
+  }
+
+  .btn-glow,
+  .btn-danger {
+    padding: 10px 12px !important;
+    font-size: 0.85rem !important;
+  }
+
+  .how-to-play-card {
+    padding: 12px !important;
+  }
+
+  .instructions-list li {
+    font-size: 0.8rem !important;
+  }
+
+  .payout-table th,
+  .payout-table td {
+    padding: 6px 8px !important;
+    font-size: 0.75rem !important;
+  }
+}
