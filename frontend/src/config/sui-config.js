@@ -14,14 +14,28 @@ export const SUI_CONFIG = {
   // SUITRUMP token address (update with actual address)
   suitrumpToken: '0x_SUITRUMP_TOKEN_ADDRESS',
 
-  // Deployed game package ID (update after deployment)
-  packageId: '0x_DEPLOYED_PACKAGE_ID',
+  // Deployed game package IDs (update after deployment)
+  packageIds: {
+    raffle: '0x263c3372496d3e9267f9e5d694eca4081651c87b4bd7607316f16d266e1c8103',
+    dice: '0x_DICE_PACKAGE_ID',
+    progressive: '0x_PROGRESSIVE_PACKAGE_ID',
+    slots: '0x_SLOTS_PACKAGE_ID',
+    crash: '0x_CRASH_PACKAGE_ID',
+    plinko: '0x_PLINKO_PACKAGE_ID',
+    keno: '0x_KENO_PACKAGE_ID',
+    roulette: '0x_ROULETTE_PACKAGE_ID'
+  },
 
-  // Game contract object IDs (update after deployment)
+  // Admin capability object IDs (owned by deployer wallet)
+  adminCaps: {
+    raffle: '0xe9643003c3441b2387a9b2ce74e43543969804e17a652ac168cdc327f5e036ea'
+  },
+
+  // Game house/pool object IDs (shared objects, created after init)
   games: {
     dice: '0x_DICE_OBJECT_ID',
     progressive: '0x_PROGRESSIVE_OBJECT_ID',
-    raffle: '0x_RAFFLE_OBJECT_ID',
+    raffle: '0x_RAFFLE_HOUSE_ID',  // Call create_house<SUIT>() to create
     slots: '0x_SLOTS_OBJECT_ID',
     crash: '0x_CRASH_OBJECT_ID',
     plinko: '0x_PLINKO_OBJECT_ID',
@@ -34,7 +48,7 @@ export const SUI_CONFIG = {
 
   // Admin addresses
   adminAddresses: [
-    // Add admin wallet addresses here
+    '0xb86ef6d0e2f93fd55e2e4cc9b27ab37fd00b2cf2c359bab01b74a98f3de86af5'  // Deployer wallet
   ]
 };
 
