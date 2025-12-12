@@ -151,29 +151,29 @@ function KenoPage({ wallet }) {
         <p className="keno-subtitle">Pick your lucky numbers and watch the draw reveal your fortune!</p>
       </div>
 
-      <div className="keno-controls-top">
-        <div className="keno-balance">
-          <span className="balance-label">Balance</span>
-          <span className="balance-value">{parseFloat(balance).toLocaleString()} SUIT</span>
-        </div>
-
-        <div className="keno-bet-selector">
-          <span className="bet-label">Bet:</span>
-          {BET_OPTIONS.map(amount => (
-            <button
-              key={amount}
-              className={`bet-option ${betAmount === amount ? 'active' : ''}`}
-              onClick={() => setBetAmount(amount)}
-              disabled={isDrawing}
-            >
-              {amount}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="keno-main">
         <div className="keno-grid-container">
+          <div className="keno-board-header">
+            <div className="keno-balance">
+              <span className="balance-label">Balance</span>
+              <span className="balance-value">{parseFloat(balance).toLocaleString()} SUIT</span>
+            </div>
+
+            <div className="keno-bet-selector">
+              <span className="bet-label">Bet:</span>
+              {BET_OPTIONS.map(amount => (
+                <button
+                  key={amount}
+                  className={`bet-option ${betAmount === amount ? 'active' : ''}`}
+                  onClick={() => setBetAmount(amount)}
+                  disabled={isDrawing}
+                >
+                  {amount}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="keno-grid">
             {Array.from({ length: GRID_SIZE }, (_, i) => i + 1).map(num => (
               <button

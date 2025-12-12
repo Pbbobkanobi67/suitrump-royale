@@ -26,12 +26,12 @@ const BET_TYPES = {
   EVEN: { name: 'Even', payout: 1, description: 'All even numbers' },
   LOW: { name: '1-18', payout: 1, description: 'Numbers 1-18' },
   HIGH: { name: '19-36', payout: 1, description: 'Numbers 19-36' },
-  DOZEN_1: { name: '1st Dozen', payout: 2, description: 'Numbers 1-12' },
-  DOZEN_2: { name: '2nd Dozen', payout: 2, description: 'Numbers 13-24' },
-  DOZEN_3: { name: '3rd Dozen', payout: 2, description: 'Numbers 25-36' },
-  COLUMN_1: { name: '1st Column', payout: 2, description: '1,4,7,10...' },
-  COLUMN_2: { name: '2nd Column', payout: 2, description: '2,5,8,11...' },
-  COLUMN_3: { name: '3rd Column', payout: 2, description: '3,6,9,12...' },
+  DOZEN_1: { name: '1st 12', payout: 2, description: 'Numbers 1-12' },
+  DOZEN_2: { name: '2nd 12', payout: 2, description: 'Numbers 13-24' },
+  DOZEN_3: { name: '3rd 12', payout: 2, description: 'Numbers 25-36' },
+  COLUMN_1: { name: 'Col 1', payout: 2, description: '1,4,7,10...' },
+  COLUMN_2: { name: 'Col 2', payout: 2, description: '2,5,8,11...' },
+  COLUMN_3: { name: 'Col 3', payout: 2, description: '3,6,9,12...' },
 };
 
 function RoulettePage({ wallet }) {
@@ -95,14 +95,12 @@ function RoulettePage({ wallet }) {
 
     const existingBet = selectedBets.find(b => b.type === type && b.number === number);
     if (existingBet) {
-      // Increase existing bet
       setSelectedBets(prev => prev.map(b =>
         b.type === type && b.number === number
           ? { ...b, amount: b.amount + amount }
           : b
       ));
     } else {
-      // Add new bet
       setSelectedBets(prev => [...prev, { type, number, amount }]);
     }
   };
@@ -135,30 +133,22 @@ function RoulettePage({ wallet }) {
         alert('Insufficient demo balance!');
         return;
       }
-      // Deduct bet
       setDemoBalance(prev => prev - totalBet);
     }
 
     setSpinning(true);
     setResult(null);
 
-    // Generate random result (0-36)
     const resultNumber = Math.floor(Math.random() * 37);
-
-    // Find position in wheel
     const resultIndex = WHEEL_NUMBERS.indexOf(resultNumber);
     const degreesPerNumber = 360 / 37;
-
-    // Calculate rotation (multiple full spins + land on number)
     const fullSpins = 5 + Math.floor(Math.random() * 3);
     const targetDegrees = fullSpins * 360 + (360 - resultIndex * degreesPerNumber);
 
     setWheelRotation(prev => prev + targetDegrees);
 
-    // Wait for animation
     await new Promise(resolve => setTimeout(resolve, 4000));
 
-    // Calculate winnings
     let totalWinnings = 0;
     const betResults = selectedBets.map(bet => {
       const won = checkBetWin(bet, resultNumber);
@@ -167,7 +157,6 @@ function RoulettePage({ wallet }) {
       return { ...bet, won, payout };
     });
 
-    // Credit winnings
     if (isDemoMode && totalWinnings > 0) {
       setDemoBalance(prev => prev + totalWinnings);
     }
@@ -180,7 +169,6 @@ function RoulettePage({ wallet }) {
       netProfit: totalWinnings - totalBet
     });
 
-    // Add to history
     setHistory(prev => [{ number: resultNumber, color: getNumberColor(resultNumber) }, ...prev.slice(0, 19)]);
 
     setSpinning(false);
@@ -225,10 +213,23 @@ function RoulettePage({ wallet }) {
         </div>
       )}
 
-      <div className="roulette-container">
-        {/* Wheel Section */}
-        <div className="roulette-wheel-section">
+      {/* Wheel Section - Top, Centered */}
+      <div className="roulette-wheel-section">
+        <div className="wheel-area">
           <div className="wheel-container">
+            <div className="wheel-outer-ring">
+              {WHEEL_NUMBERS.map((num, i) => (
+                <div
+                  key={`outer-${num}`}
+                  className={`outer-number ${getNumberColor(num)}`}
+                  style={{
+                    transform: `rotate(${i * (360 / 37)}deg)`
+                  }}
+                >
+                  <span>{num}</span>
+                </div>
+              ))}
+            </div>
             <div className="wheel-pointer">▼</div>
             <div
               className="roulette-wheel"
@@ -240,7 +241,7 @@ function RoulettePage({ wallet }) {
                   key={num}
                   className={`wheel-number ${getNumberColor(num)}`}
                   style={{
-                    transform: `rotate(${i * (360 / 37)}deg) translateY(-150px)`
+                    transform: `rotate(${i * (360 / 37)}deg) translateY(-140px)`
                   }}
                 >
                   {num}
@@ -253,214 +254,136 @@ function RoulettePage({ wallet }) {
                   <span className="result-number">{result.number}</span>
                 </div>
               ) : (
-                <span className="wheel-logo">🎰</span>
+                <img src="/suitrump-mascot.png" alt="SUIT" className="wheel-mascot" />
               )}
             </div>
           </div>
 
-          {/* History */}
-          <div className="roulette-history">
-            <h4>History</h4>
-            <div className="history-numbers">
-              {history.length === 0 ? (
-                <span className="no-history">No spins yet</span>
-              ) : (
-                history.map((h, i) => (
-                  <span key={i} className={`history-number ${h.color}`}>
-                    {h.number}
-                  </span>
-                ))
-              )}
+          {/* Result & History Panel */}
+          <div className="wheel-info-panel">
+            {result ? (
+              <div className={`result-card ${result.netProfit > 0 ? 'win' : 'lose'}`}>
+                <div className="result-title">{result.netProfit > 0 ? '🎉 Winner!' : 'No luck'}</div>
+                <div className={`result-number-large ${result.color}`}>{result.number}</div>
+                {result.netProfit > 0 && (
+                  <div className="result-winnings">+{result.totalWinnings.toFixed(0)} SUIT</div>
+                )}
+              </div>
+            ) : (
+              <div className="result-card waiting">
+                <div className="result-title">Place Your Bets</div>
+                <div className="result-subtitle">Select chips and click numbers</div>
+              </div>
+            )}
+
+            <div className="history-panel">
+              <h4>History</h4>
+              <div className="history-numbers">
+                {history.length === 0 ? (
+                  <span className="no-history">No spins yet</span>
+                ) : (
+                  history.slice(0, 10).map((h, i) => (
+                    <span key={i} className={`history-number ${h.color}`}>
+                      {h.number}
+                    </span>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Betting Board */}
-        <div className="roulette-board-section">
-          <div className="bet-amount-selector">
-            <label>Bet Amount:</label>
-            <div className="bet-chips">
-              {[5, 10, 25, 50, 100].map(amount => (
-                <button
-                  key={amount}
-                  className={`chip ${betAmount === String(amount) ? 'selected' : ''}`}
-                  onClick={() => setBetAmount(String(amount))}
-                  disabled={spinning}
-                >
-                  {amount}
-                </button>
-              ))}
-            </div>
-            <input
-              type="number"
-              value={betAmount}
-              onChange={(e) => setBetAmount(e.target.value)}
-              min="1"
-              disabled={spinning}
-              className="bet-input"
-            />
+      {/* Betting Section - Horizontal Layout */}
+      <div className="roulette-betting-section">
+        {/* Controls Bar */}
+        <div className="betting-controls">
+          <div className="balance-display">
+            <span className="balance-label">Balance</span>
+            <span className="balance-value">{isDemoMode ? demoBalance.toLocaleString() : (wallet?.blueBalance || 0).toLocaleString()} SUIT</span>
           </div>
 
-          {/* Number Grid */}
-          <div className="roulette-board">
-            <div className="zero-section">
-              {renderBoardNumber(0)}
-            </div>
-            <div className="numbers-grid">
-              {[...Array(12)].map((_, row) => (
-                <div key={row} className="number-row">
-                  {[3, 2, 1].map(col => {
-                    const num = row * 3 + col;
-                    return renderBoardNumber(num);
-                  })}
-                </div>
-              ))}
-            </div>
-
-            {/* Column bets */}
-            <div className="column-bets">
+          <div className="chip-selector">
+            <span className="chip-label">Chip:</span>
+            {[5, 10, 25, 50, 100].map(amount => (
               <button
-                className={`outside-bet ${selectedBets.some(b => b.type === 'COLUMN_3') ? 'selected' : ''}`}
-                onClick={() => addBet('COLUMN_3')}
+                key={amount}
+                className={`chip ${betAmount === String(amount) ? 'selected' : ''}`}
+                onClick={() => setBetAmount(String(amount))}
                 disabled={spinning}
               >
-                2:1
+                {amount}
               </button>
-              <button
-                className={`outside-bet ${selectedBets.some(b => b.type === 'COLUMN_2') ? 'selected' : ''}`}
-                onClick={() => addBet('COLUMN_2')}
-                disabled={spinning}
-              >
-                2:1
-              </button>
-              <button
-                className={`outside-bet ${selectedBets.some(b => b.type === 'COLUMN_1') ? 'selected' : ''}`}
-                onClick={() => addBet('COLUMN_1')}
-                disabled={spinning}
-              >
-                2:1
-              </button>
-            </div>
+            ))}
           </div>
 
-          {/* Outside Bets */}
-          <div className="outside-bets">
-            <div className="dozen-bets">
-              <button
-                className={`outside-bet dozen ${selectedBets.some(b => b.type === 'DOZEN_1') ? 'selected' : ''}`}
-                onClick={() => addBet('DOZEN_1')}
-                disabled={spinning}
-              >
-                1st 12
-              </button>
-              <button
-                className={`outside-bet dozen ${selectedBets.some(b => b.type === 'DOZEN_2') ? 'selected' : ''}`}
-                onClick={() => addBet('DOZEN_2')}
-                disabled={spinning}
-              >
-                2nd 12
-              </button>
-              <button
-                className={`outside-bet dozen ${selectedBets.some(b => b.type === 'DOZEN_3') ? 'selected' : ''}`}
-                onClick={() => addBet('DOZEN_3')}
-                disabled={spinning}
-              >
-                3rd 12
-              </button>
-            </div>
-
-            <div className="even-money-bets">
-              <button
-                className={`outside-bet ${selectedBets.some(b => b.type === 'LOW') ? 'selected' : ''}`}
-                onClick={() => addBet('LOW')}
-                disabled={spinning}
-              >
-                1-18
-              </button>
-              <button
-                className={`outside-bet ${selectedBets.some(b => b.type === 'EVEN') ? 'selected' : ''}`}
-                onClick={() => addBet('EVEN')}
-                disabled={spinning}
-              >
-                EVEN
-              </button>
-              <button
-                className={`outside-bet red ${selectedBets.some(b => b.type === 'RED') ? 'selected' : ''}`}
-                onClick={() => addBet('RED')}
-                disabled={spinning}
-              >
-                RED
-              </button>
-              <button
-                className={`outside-bet black ${selectedBets.some(b => b.type === 'BLACK') ? 'selected' : ''}`}
-                onClick={() => addBet('BLACK')}
-                disabled={spinning}
-              >
-                BLACK
-              </button>
-              <button
-                className={`outside-bet ${selectedBets.some(b => b.type === 'ODD') ? 'selected' : ''}`}
-                onClick={() => addBet('ODD')}
-                disabled={spinning}
-              >
-                ODD
-              </button>
-              <button
-                className={`outside-bet ${selectedBets.some(b => b.type === 'HIGH') ? 'selected' : ''}`}
-                onClick={() => addBet('HIGH')}
-                disabled={spinning}
-              >
-                19-36
-              </button>
-            </div>
-          </div>
-
-          {/* Current Bets */}
-          {selectedBets.length > 0 && (
-            <div className="current-bets">
-              <h4>Current Bets (Total: {getTotalBet()} SUIT)</h4>
-              <div className="bet-list">
-                {selectedBets.map((bet, i) => (
-                  <div key={i} className="bet-item">
-                    <span>
-                      {BET_TYPES[bet.type].name}
-                      {bet.number !== null ? ` (${bet.number})` : ''}
-                      : {bet.amount} SUIT
-                    </span>
-                    <button onClick={() => removeBet(i)} disabled={spinning}>×</button>
-                  </div>
-                ))}
-              </div>
-              <button className="btn btn-secondary" onClick={clearBets} disabled={spinning}>
-                Clear All
-              </button>
-            </div>
-          )}
-
-          {/* Spin Button */}
           <button
             className="btn btn-primary btn-spin"
             onClick={spin}
             disabled={spinning || selectedBets.length === 0 || !canPlay}
           >
-            {spinning ? 'Spinning...' : 'SPIN'}
+            {spinning ? 'Spinning...' : `SPIN (${getTotalBet()} SUIT)`}
           </button>
-
-          {/* Result Display */}
-          {result && (
-            <div className={`spin-result ${result.netProfit > 0 ? 'win' : 'lose'}`}>
-              <h3>
-                {result.netProfit > 0 ? '🎉 You Won!' : 'Better luck next time!'}
-              </h3>
-              <p className="result-info">
-                Ball landed on <span className={`result-num ${result.color}`}>{result.number}</span>
-              </p>
-              {result.netProfit > 0 && (
-                <p className="winnings">+{result.totalWinnings.toFixed(2)} SUIT</p>
-              )}
-            </div>
-          )}
         </div>
+
+        {/* Horizontal Betting Table */}
+        <div className="betting-table-horizontal">
+          {/* Left Outside Bets */}
+          <div className="outside-column">
+            <button className={`table-bet ${selectedBets.some(b => b.type === 'LOW') ? 'selected' : ''}`} onClick={() => addBet('LOW')} disabled={spinning}>1-18</button>
+            <button className={`table-bet ${selectedBets.some(b => b.type === 'EVEN') ? 'selected' : ''}`} onClick={() => addBet('EVEN')} disabled={spinning}>EVEN</button>
+            <button className={`table-bet red ${selectedBets.some(b => b.type === 'RED') ? 'selected' : ''}`} onClick={() => addBet('RED')} disabled={spinning}>RED</button>
+          </div>
+
+          {/* Main Number Grid */}
+          <div className="number-grid-horizontal">
+            <div className="zero-cell">{renderBoardNumber(0)}</div>
+            <div className="numbers-rows">
+              {[3, 2, 1].map(row => (
+                <div key={row} className="number-row-h">
+                  {[...Array(12)].map((_, col) => {
+                    const num = col * 3 + row;
+                    return renderBoardNumber(num);
+                  })}
+                  <button
+                    className={`table-bet col-bet ${selectedBets.some(b => b.type === `COLUMN_${row}`) ? 'selected' : ''}`}
+                    onClick={() => addBet(`COLUMN_${row}`)}
+                    disabled={spinning}
+                  >
+                    2:1
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="dozen-row-h">
+              <button className={`table-bet dozen ${selectedBets.some(b => b.type === 'DOZEN_1') ? 'selected' : ''}`} onClick={() => addBet('DOZEN_1')} disabled={spinning}>1st 12</button>
+              <button className={`table-bet dozen ${selectedBets.some(b => b.type === 'DOZEN_2') ? 'selected' : ''}`} onClick={() => addBet('DOZEN_2')} disabled={spinning}>2nd 12</button>
+              <button className={`table-bet dozen ${selectedBets.some(b => b.type === 'DOZEN_3') ? 'selected' : ''}`} onClick={() => addBet('DOZEN_3')} disabled={spinning}>3rd 12</button>
+            </div>
+          </div>
+
+          {/* Right Outside Bets */}
+          <div className="outside-column">
+            <button className={`table-bet black ${selectedBets.some(b => b.type === 'BLACK') ? 'selected' : ''}`} onClick={() => addBet('BLACK')} disabled={spinning}>BLACK</button>
+            <button className={`table-bet ${selectedBets.some(b => b.type === 'ODD') ? 'selected' : ''}`} onClick={() => addBet('ODD')} disabled={spinning}>ODD</button>
+            <button className={`table-bet ${selectedBets.some(b => b.type === 'HIGH') ? 'selected' : ''}`} onClick={() => addBet('HIGH')} disabled={spinning}>19-36</button>
+          </div>
+        </div>
+
+        {/* Current Bets */}
+        {selectedBets.length > 0 && (
+          <div className="current-bets-bar">
+            <div className="bets-list">
+              {selectedBets.map((bet, i) => (
+                <span key={i} className="bet-tag">
+                  {BET_TYPES[bet.type].name}{bet.number !== null ? ` (${bet.number})` : ''}: {bet.amount}
+                  <button onClick={() => removeBet(i)} disabled={spinning}>×</button>
+                </span>
+              ))}
+            </div>
+            <button className="btn btn-outline" onClick={clearBets} disabled={spinning}>Clear</button>
+          </div>
+        )}
       </div>
 
       {/* How to Play */}
