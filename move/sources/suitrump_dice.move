@@ -1,5 +1,6 @@
 /// SUITRUMP Royale - Classic Dice Game
 /// A provably fair dice game on Sui blockchain
+#[allow(unused_const, unused_variable, unused_use, unused_mut_parameter, duplicate_alias, lint(public_random, public_entry))]
 module suitrump_royale::suitrump_dice {
     use sui::object::{Self, UID};
     use sui::transfer;

@@ -1,5 +1,6 @@
 /// SUITRUMP Royale - Plinko Game
 /// Drop a ball through pegs to land on multipliers
+#[allow(unused_const, unused_variable, unused_use, unused_mut_parameter, duplicate_alias, lint(public_random, public_entry))]
 module suitrump_royale::suitrump_plinko {
     use sui::object::{Self, UID};
     use sui::transfer;

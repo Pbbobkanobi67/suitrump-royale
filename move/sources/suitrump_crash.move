@@ -1,5 +1,6 @@
 /// SUITRUMP Royale - Crash Game
 /// Multiplier grows until it crashes - cash out before it does!
+#[allow(unused_const, unused_variable, unused_use, unused_mut_parameter, duplicate_alias, lint(public_random, public_entry))]
 module suitrump_royale::suitrump_crash {
     use sui::object::{Self, UID};
     use sui::transfer;
@@ -144,22 +145,22 @@ module suitrump_royale::suitrump_crash {
             100
         } else if (r < 2000) {
             // 16% crash between 1.01x - 1.5x
-            101 + (random::generate_u64(generator) % 50) as u64
+            (101 + (random::generate_u64(generator) % 50))
         } else if (r < 5000) {
             // 30% crash between 1.5x - 2x
-            150 + (random::generate_u64(generator) % 50) as u64
+            (150 + (random::generate_u64(generator) % 50))
         } else if (r < 7500) {
             // 25% crash between 2x - 3x
-            200 + (random::generate_u64(generator) % 100) as u64
+            (200 + (random::generate_u64(generator) % 100))
         } else if (r < 9000) {
             // 15% crash between 3x - 5x
-            300 + (random::generate_u64(generator) % 200) as u64
+            (300 + (random::generate_u64(generator) % 200))
         } else if (r < 9800) {
             // 8% crash between 5x - 10x
-            500 + (random::generate_u64(generator) % 500) as u64
+            (500 + (random::generate_u64(generator) % 500))
         } else {
             // 2% crash between 10x - 50x (moon!)
-            1000 + (random::generate_u64(generator) % 4000) as u64
+            (1000 + (random::generate_u64(generator) % 4000))
         }
     }
 

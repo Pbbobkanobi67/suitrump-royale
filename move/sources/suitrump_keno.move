@@ -1,5 +1,6 @@
 /// SUITRUMP Royale - Keno Game
 /// Pick numbers and match draws to win up to 100x
+#[allow(unused_const, unused_variable, unused_use, unused_mut_parameter, duplicate_alias, lint(public_random, public_entry))]
 module suitrump_royale::suitrump_keno {
     use sui::object::{Self, UID};
     use sui::transfer;

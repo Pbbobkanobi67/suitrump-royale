@@ -1,5 +1,6 @@
 /// SUITRUMP Royale - European Roulette
 /// Classic roulette with 0-36 numbers, multiple bet types
+#[allow(unused_const, unused_variable, unused_use, unused_mut_parameter, duplicate_alias, lint(public_random, public_entry))]
 module suitrump_royale::suitrump_roulette {
     use sui::object::{Self, UID};
     use sui::transfer;

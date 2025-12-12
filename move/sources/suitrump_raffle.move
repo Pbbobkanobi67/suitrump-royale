@@ -1,5 +1,6 @@
 /// SUITRUMP Royale - Raffle System
 /// Buy tickets for a chance to win the prize pool
+#[allow(unused_const, unused_variable, unused_use, unused_mut_parameter, duplicate_alias, lint(public_random, public_entry))]
 module suitrump_royale::suitrump_raffle {
     use sui::object::{Self, UID};
     use sui::transfer;

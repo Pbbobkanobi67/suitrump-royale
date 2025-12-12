@@ -1,5 +1,6 @@
 /// SUITRUMP Royale - Progressive Jackpot
 /// Match 4 dice to win the growing jackpot pool
+#[allow(unused_const, unused_variable, unused_use, unused_mut_parameter, duplicate_alias, lint(public_random, public_entry))]
 module suitrump_royale::suitrump_progressive {
     use sui::object::{Self, UID};
     use sui::transfer;
@@ -89,7 +90,7 @@ module suitrump_royale::suitrump_progressive {
         assert!(payment_amount >= TICKET_PRICE, EInsufficientBalance);
 
         // Split payment: 80% to jackpot, 20% to house
-        let payment_balance = coin::into_balance(payment);
+        let mut payment_balance = coin::into_balance(payment);
         let jackpot_amount = (TICKET_PRICE * JACKPOT_CONTRIBUTION) / 1000;
         let house_amount = TICKET_PRICE - jackpot_amount;
 
