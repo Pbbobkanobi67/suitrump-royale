@@ -1,0 +1,7 @@
+{
+  "address": "0x369E48f0e071E3AcFCb812C585dFB798292CE489",
+  "network": "bsc_testnet",
+  "chainId": 97,
+  "rpcUrl": "https://bsc-testnet-rpc.publicnode.com",
+  "explorerUrl": "https://testnet.bscscan.com"
+}

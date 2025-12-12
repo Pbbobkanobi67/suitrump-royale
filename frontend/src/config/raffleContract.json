@@ -1,0 +1,11 @@
+{
+  "address": "0x7FB399FBde957B4689E07329916c92Cba9Df9c20",
+  "network": "bsc_testnet",
+  "chainId": 97,
+  "rpcUrl": "https://bsc-testnet-rpc.publicnode.com",
+  "explorerUrl": "https://testnet.bscscan.com",
+  "blueToken": "0xf11Af396703E11D48780B5154E52Fd7b430C6C01",
+  "treasuryWallet": "0x5F55f9bBaBe64c4b9070655DEC8DB6519EbdDBf2",
+  "developerWallet": "0x5F55f9bBaBe64c4b9070655DEC8DB6519EbdDBf2",
+  "deployedAt": "2025-11-26T00:03:17.586Z"
+}
