@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 
 const STORAGE_KEY = 'suitrumpRoyale_gameSettings';
 
@@ -22,7 +22,7 @@ const GAME_NAV = [
   { id: 'roulette', route: '/roulette', icon: '🎡', name: 'Roulette' }
 ];
 
-function Navigation() {
+function Navigation({ isAdmin }) {
   const [enabledGames, setEnabledGames] = useState(() => {
     // Load initial state from localStorage
     try {
@@ -35,6 +35,35 @@ function Navigation() {
     // Default: all games enabled
     return GAME_NAV.map(game => game.id);
   });
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  // Close sidebar on route change
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
+
+  // Close sidebar on escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsSidebarOpen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
+
+  // Prevent body scroll when sidebar is open
+  useEffect(() => {
+    if (isSidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isSidebarOpen]);
 
   // Listen for game settings changes
   useEffect(() => {
@@ -66,34 +95,128 @@ function Navigation() {
 
   const visibleGames = GAME_NAV.filter(game => enabledGames.includes(game.id));
 
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarOpen(prev => !prev);
+  }, []);
+
+  const closeSidebar = useCallback(() => {
+    setIsSidebarOpen(false);
+  }, []);
+
+  // Render nav links (used in both desktop and mobile)
+  const renderNavLinks = (isMobile = false) => (
+    <>
+      {/* Royale link always first */}
+      <NavLink
+        to="/"
+        end
+        className={({ isActive }) => `nav-link ${isActive ? 'active' : ''} ${isMobile ? 'mobile' : ''}`}
+        onClick={isMobile ? closeSidebar : undefined}
+      >
+        <span className="nav-icon">🏠</span> Royale
+      </NavLink>
+
+      {/* Dynamic game links */}
+      {visibleGames.map(game => (
+        <NavLink
+          key={game.id}
+          to={game.route}
+          className={({ isActive }) => `nav-link ${isActive ? 'active' : ''} ${isMobile ? 'mobile' : ''}`}
+          onClick={isMobile ? closeSidebar : undefined}
+        >
+          <span className="nav-icon">{game.icon}</span> {game.name}
+        </NavLink>
+      ))}
+
+      {/* Static links at end */}
+      <NavLink
+        to="/faucet"
+        className={({ isActive }) => `nav-link ${isActive ? 'active' : ''} ${isMobile ? 'mobile' : ''}`}
+        onClick={isMobile ? closeSidebar : undefined}
+      >
+        <span className="nav-icon">🚰</span> Faucet
+      </NavLink>
+      <NavLink
+        to="/docs"
+        className={({ isActive }) => `nav-link ${isActive ? 'active' : ''} ${isMobile ? 'mobile' : ''}`}
+        onClick={isMobile ? closeSidebar : undefined}
+      >
+        <span className="nav-icon">📖</span> Docs
+      </NavLink>
+
+      {/* Buy SUITRUMP - external link */}
+      <a
+        href="https://sui-trump.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`nav-link nav-link-external ${isMobile ? 'mobile' : ''}`}
+        onClick={isMobile ? closeSidebar : undefined}
+      >
+        <span className="nav-icon">💰</span> Buy SUITRUMP
+      </a>
+
+      {/* Admin link - only visible to admins */}
+      {isAdmin && (
+        <NavLink
+          to="/admin"
+          className={({ isActive }) => `nav-link nav-link-admin ${isActive ? 'active' : ''} ${isMobile ? 'mobile' : ''}`}
+          onClick={isMobile ? closeSidebar : undefined}
+        >
+          <span className="nav-icon">⚙️</span> Admin
+        </NavLink>
+      )}
+    </>
+  );
+
   return (
-    <nav className="navigation">
-      <div className="nav-links">
-        {/* Royale link always first */}
-        <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          <span className="nav-icon">🏠</span> Royale
-        </NavLink>
+    <>
+      <nav className="navigation">
+        {/* Hamburger menu button - visible on mobile */}
+        <button
+          className={`hamburger-btn ${isSidebarOpen ? 'open' : ''}`}
+          onClick={toggleSidebar}
+          aria-label="Toggle navigation menu"
+          aria-expanded={isSidebarOpen}
+        >
+          <span className="hamburger-line"></span>
+          <span className="hamburger-line"></span>
+          <span className="hamburger-line"></span>
+        </button>
 
-        {/* Dynamic game links */}
-        {visibleGames.map(game => (
-          <NavLink
-            key={game.id}
-            to={game.route}
-            className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+        {/* Desktop nav links */}
+        <div className="nav-links nav-links-desktop">
+          {renderNavLinks(false)}
+        </div>
+      </nav>
+
+      {/* Mobile sidebar overlay */}
+      <div
+        className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
+        onClick={closeSidebar}
+        aria-hidden={!isSidebarOpen}
+      />
+
+      {/* Mobile sidebar */}
+      <aside
+        className={`sidebar ${isSidebarOpen ? 'open' : ''}`}
+        aria-hidden={!isSidebarOpen}
+      >
+        <div className="sidebar-header">
+          <img src="/suitrump-mascot.png" alt="SUITRUMP" className="sidebar-mascot" />
+          <span className="sidebar-title">SUITRUMP Royale</span>
+          <button
+            className="sidebar-close-btn"
+            onClick={closeSidebar}
+            aria-label="Close navigation menu"
           >
-            <span className="nav-icon">{game.icon}</span> {game.name}
-          </NavLink>
-        ))}
-
-        {/* Static links at end */}
-        <NavLink to="/faucet" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          <span className="nav-icon">🚰</span> Faucet
-        </NavLink>
-        <NavLink to="/docs" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          <span className="nav-icon">📖</span> Docs
-        </NavLink>
-      </div>
-    </nav>
+            ×
+          </button>
+        </div>
+        <div className="sidebar-links">
+          {renderNavLinks(true)}
+        </div>
+      </aside>
+    </>
   );
 }
 

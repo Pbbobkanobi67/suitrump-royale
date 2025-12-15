@@ -1,0 +1,124 @@
+/* Admin Page Styles */
+
+/* Larger Game Select Dropdown */
+.game-select-large {
+  width: 100%;
+  min-width: 200px;
+  padding: 14px 16px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2d4a3f 0%, #1a3a2f 100%);
+  border: 2px solid #4a6b5d;
+  border-radius: 10px;
+  color: #f8ffe8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.game-select-large:hover {
+  border-color: #e2fea5;
+  background: linear-gradient(135deg, #3d5a4f 0%, #2a4a3f 100%);
+}
+
+.game-select-large:focus {
+  outline: none;
+  border-color: #e2fea5;
+  box-shadow: 0 0 0 3px rgba(226, 254, 165, 0.2);
+}
+
+.game-select-large option {
+  background: #0f2c23;
+  color: #f8ffe8;
+  padding: 12px;
+}
+
+/* Wallet Grid */
+.wallet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.wallet-card {
+  background: linear-gradient(135deg, #2d4a3f 0%, #0f2c23 100%);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #4a6b5d;
+}
+
+.wallet-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.wallet-card-header .wallet-icon {
+  font-size: 1.3rem;
+}
+
+.wallet-card-header .wallet-label {
+  font-weight: 600;
+  color: #f8ffe8;
+  font-size: 1rem;
+}
+
+.wallet-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wallet-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: #1a3a2f;
+  border: 1px solid #4a6b5d;
+  border-radius: 8px;
+  color: #f8ffe8;
+  font-family: 'Inter', monospace;
+  font-size: 0.85rem;
+}
+
+.wallet-input:focus {
+  outline: none;
+  border-color: #e2fea5;
+}
+
+.wallet-input::placeholder {
+  color: #6b8b7b;
+}
+
+.wallet-link {
+  color: #e2fea5;
+  font-size: 0.8rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wallet-link:hover {
+  text-decoration: underline;
+}
+
+.wallet-address-fixed {
+  background: #1a3a2f;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: 'Inter', monospace;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.wallet-note {
+  font-size: 0.75rem;
+  color: #6b8b7b;
+  font-style: italic;
+}
+
+/* Action card improvements */
+.action-card h4 {
+  margin-bottom: 12px;
+  color: #f8ffe8;
+}

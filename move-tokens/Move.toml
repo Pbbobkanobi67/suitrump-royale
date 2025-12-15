@@ -1,0 +1,9 @@
+[package]
+name = "suitrump_tokens"
+edition = "2024.beta"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+
+[addresses]
+suitrump_tokens = "0x0"

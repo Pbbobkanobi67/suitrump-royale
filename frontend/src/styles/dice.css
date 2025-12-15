@@ -40,6 +40,28 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Dela Gothic One', cursive;
 }
 
+/* USD Value Hints - Elegant Display */
+.usd-hint, .usd-value {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: #60a5fa;
+  opacity: 0.9;
+  margin-left: 6px;
+}
+
+.usd-hint {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.usd-value {
+  background: rgba(96, 165, 250, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #60a5fa;
+}
+
 .app {
   min-height: 100vh;
   padding: 20px;
@@ -50,36 +72,35 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0 auto;
 }
 
-/* Header - SUITRUMP Style */
+/* Header - Clean SUITRUMP Style */
 .header {
   background: linear-gradient(135deg, #1e293b, #0f172a);
   border: 2px solid #3b82f6;
   border-radius: 16px;
-  padding: 20px 40px;
+  padding: 16px 30px;
   margin-bottom: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.header-main-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
 .header-branding h1 {
-  font-size: 2rem;
+  font-size: 1.8rem;
   color: var(--text-light);
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.header-branding h1 .dice-icon {
-  font-size: 1.8rem;
-}
-
 .header-mascot {
-  height: 48px;
+  height: 44px;
   width: auto;
   border-radius: 50%;
   object-fit: cover;
@@ -87,9 +108,233 @@ h1, h2, h3, h4, h5, h6 {
 
 .header-branding p {
   color: var(--text-gray);
-  font-size: 0.95rem;
+  font-size: 0.85rem;
 }
 
+/* Center Stack: Price + Cashier */
+.header-center-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.header-center-stack.demo-mode {
+  min-width: 180px;
+}
+
+/* Price Ticker Row */
+.price-ticker-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(30, 58, 95, 0.2));
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: 'Inter', monospace;
+}
+
+.price-ticker-row .price-label {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.price-ticker-row .price-value {
+  color: #60a5fa;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.price-ticker-row .price-change {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.price-ticker-row .price-change.positive {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.price-ticker-row .price-change.negative {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* Cashier Button Row */
+.cashier-button-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cashier-button-row:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: translateY(-1px);
+}
+
+.cashier-button-row .ticket-icon {
+  font-size: 1rem;
+}
+
+.cashier-button-row .ticket-amount {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+}
+
+.cashier-button-row .ticket-value {
+  color: rgba(15, 23, 42, 0.7);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.cashier-button-row.demo {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.cashier-button-row.demo:hover {
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+}
+
+/* Demo Indicator */
+.demo-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+
+.demo-indicator .demo-badge {
+  color: #a78bfa;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.demo-indicator .demo-reset-btn {
+  background: rgba(139, 92, 246, 0.3);
+  border: none;
+  color: #c4b5fd;
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.demo-indicator .demo-reset-btn:hover {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+/* Wallet Section - Stacked like Price+Cashier */
+.header-wallet-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+/* Style the Sui Connect Button */
+.header-wallet-section [class*="ConnectButton"] button,
+.header-wallet-section button[data-testid],
+.header-wallet-section > button:first-of-type {
+  width: 100%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  border: 1px solid rgba(59, 130, 246, 0.5) !important;
+  border-radius: 8px !important;
+  padding: 10px 16px !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+
+.header-wallet-section [class*="ConnectButton"] button:hover,
+.header-wallet-section button[data-testid]:hover {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6) !important;
+}
+
+.wallet-balance-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(30, 58, 95, 0.25));
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 8px;
+  padding: 10px 16px;
+  width: 100%;
+}
+
+.wallet-balance-card .wallet-label {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wallet-balance-card .wallet-amount {
+  color: #e0f2fe;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+}
+
+.wallet-balance-card .wallet-usd {
+  color: #60a5fa;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Demo Toggle Button */
+.demo-toggle-btn {
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #a78bfa;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.demo-toggle-btn:hover {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: #a78bfa;
+}
+
+.demo-toggle-btn.active {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+  color: #fff;
+}
+
+.demo-toggle-btn.active:hover {
+  background: #7c3aed;
+}
+
+/* Legacy header-wallet for compatibility */
 .header-wallet {
   display: flex;
   align-items: center;
@@ -148,6 +393,207 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--accent-lime);
   border-color: var(--accent-lime);
   font-weight: 700;
+}
+
+/* External nav link (Buy SUITRUMP) */
+.nav-link-external {
+  color: #22c55e !important;
+  border: 2px solid rgba(34, 197, 94, 0.4) !important;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.nav-link-external:hover {
+  color: #fff !important;
+  background: #22c55e !important;
+  border-color: #22c55e !important;
+}
+
+/* Admin nav link */
+.nav-link-admin {
+  color: #f59e0b !important;
+  border: 2px solid rgba(245, 158, 11, 0.4) !important;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.nav-link-admin:hover {
+  color: #fff !important;
+  background: #f59e0b !important;
+  border-color: #f59e0b !important;
+}
+
+.nav-link-admin.active {
+  color: #0f172a !important;
+  background: #f59e0b !important;
+  border-color: #f59e0b !important;
+}
+
+/* ============================================
+   MOBILE SIDEBAR NAVIGATION
+   ============================================ */
+
+/* Hamburger button - hidden on desktop */
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 100;
+}
+
+.hamburger-line {
+  display: block;
+  width: 24px;
+  height: 3px;
+  background: var(--accent-lime);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.hamburger-btn.open .hamburger-line:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 6px);
+}
+
+.hamburger-btn.open .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-btn.open .hamburger-line:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -6px);
+}
+
+/* Sidebar overlay */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Sidebar panel */
+.sidebar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  max-width: 85vw;
+  height: 100vh;
+  background: var(--bg-dark);
+  border-right: 2px solid #3b82f6;
+  z-index: 999;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(30, 58, 95, 0.2));
+}
+
+.sidebar-mascot {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.sidebar-title {
+  flex: 1;
+  font-family: 'Dela Gothic One', cursive;
+  font-size: 1rem;
+  color: var(--accent-lime);
+}
+
+.sidebar-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-gray);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 5px 10px;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.sidebar-close-btn:hover {
+  color: var(--accent-lime);
+}
+
+.sidebar-links {
+  display: flex;
+  flex-direction: column;
+  padding: 15px 10px;
+  gap: 5px;
+}
+
+.sidebar-links .nav-link {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-links .nav-link .nav-icon {
+  font-size: 1.2rem;
+}
+
+.sidebar-links .nav-link:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.sidebar-links .nav-link.active {
+  background: var(--accent-lime);
+  color: var(--dark-green);
+}
+
+/* Mobile styles - show hamburger, hide desktop nav */
+@media (max-width: 900px) {
+  .hamburger-btn {
+    display: flex;
+  }
+
+  .nav-links-desktop {
+    display: none !important;
+  }
+
+  .sidebar,
+  .sidebar-overlay {
+    display: block;
+  }
+
+  .navigation {
+    justify-content: flex-start;
+    padding: 10px 15px;
+  }
 }
 
 /* Buttons - SUITRUMP Style */
@@ -3355,34 +3801,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Mobile Navigation Fix */
-@media (max-width: 768px) {
-  .navigation {
-  border: 2px solid #3b82f6 !important;
-    padding: 10px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .nav-links {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-start;
-    min-width: max-content;
-    padding-bottom: 5px;
-  }
-
-  .nav-link {
-    padding: 8px 12px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .nav-icon {
-    font-size: 1rem;
-  }
-}
+/* Mobile Navigation - Using sidebar (styles in main section above) */
 
 /* Mobile Casino Page - Game Cards */
 @media (max-width: 768px) {
@@ -4661,4 +5080,204 @@ h1, h2, h3, h4, h5, h6 {
 .bet-controls .btn-large:disabled {
   background: #475569 !important;
   cursor: not-allowed !important;
+}
+
+/* Place Bet button at top */
+.place-bet-top {
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+
+/* Jackpot Win Display Fix */
+.result-display.jackpot-win {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(234, 88, 12, 0.2)) !important;
+  border: 2px solid #f59e0b !important;
+  animation: jackpot-glow 1s ease-in-out infinite alternate !important;
+  padding: 20px 30px !important;
+  margin: 20px auto !important;
+  max-width: 400px !important;
+  text-align: center !important;
+  border-radius: 12px !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.result-display.jackpot-win .result-matches {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #fbbf24 !important;
+  display: block !important;
+  margin-bottom: 10px !important;
+}
+
+.result-display.jackpot-win .result-payout {
+  font-size: 1.8rem !important;
+  font-weight: 800 !important;
+  color: #22c55e !important;
+  display: block !important;
+  margin-bottom: 10px !important;
+}
+
+.result-display.jackpot-win .jackpot-text {
+  font-size: 2.5rem !important;
+  font-weight: 900 !important;
+  color: #f59e0b !important;
+  text-shadow:
+    0 0 10px rgba(245, 158, 11, 0.8),
+    0 0 20px rgba(245, 158, 11, 0.6),
+    0 0 40px rgba(245, 158, 11, 0.4) !important;
+  display: block !important;
+  letter-spacing: 3px !important;
+  animation: jackpot-pulse 0.5s ease-in-out infinite alternate !important;
+}
+
+@keyframes jackpot-pulse {
+  from {
+    transform: scale(1);
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
+  }
+  to {
+    transform: scale(1.05);
+    text-shadow: 0 0 30px rgba(245, 158, 11, 1), 0 0 60px rgba(245, 158, 11, 0.8);
+  }
+}
+
+@keyframes jackpot-glow {
+  from {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4), inset 0 0 20px rgba(245, 158, 11, 0.1);
+  }
+  to {
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.7), inset 0 0 30px rgba(245, 158, 11, 0.2);
+  }
+}
+
+/* Ensure roll section doesn't clip content */
+.roll-section {
+  overflow: visible !important;
+}
+
+.progressive-card {
+  overflow: visible !important;
+}
+
+.progressive-page-v2 {
+  overflow: visible !important;
+}
+
+
+/* Roll Result Section - Centered box for match results */
+.roll-result-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.roll-result-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 25px 50px;
+  border-radius: 16px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 2px solid rgba(100, 116, 139, 0.3);
+  min-width: 200px;
+  text-align: center;
+}
+
+.roll-result-box.win {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+}
+
+.roll-result-box.loss {
+  background: rgba(100, 116, 139, 0.1);
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+.roll-result-box.jackpot {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(234, 88, 12, 0.2));
+  border: 3px solid #f59e0b;
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.4);
+  animation: jackpot-box-glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes jackpot-box-glow {
+  from { box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+  to { box-shadow: 0 0 50px rgba(245, 158, 11, 0.7); }
+}
+
+.result-matches-display {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #e2fea5;
+  line-height: 1;
+}
+
+.roll-result-box.win .result-matches-display {
+  color: #22c55e;
+}
+
+.roll-result-box.jackpot .result-matches-display {
+  color: #fbbf24;
+}
+
+.result-matches-label {
+  font-size: 1rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 5px;
+}
+
+.result-payout-display {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #22c55e;
+  margin-top: 15px;
+}
+
+.roll-result-box.jackpot .result-payout-display {
+  color: #4ade80;
+  font-size: 1.8rem;
+}
+
+.jackpot-banner {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #f59e0b;
+  margin-top: 15px;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  text-shadow:
+    0 0 10px rgba(245, 158, 11, 0.8),
+    0 0 20px rgba(245, 158, 11, 0.6),
+    0 0 40px rgba(245, 158, 11, 0.4);
+  animation: jackpot-text-pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes jackpot-text-pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .roll-result-box {
+    padding: 20px 30px;
+    min-width: 160px;
+  }
+
+  .result-matches-display {
+    font-size: 2.5rem;
+  }
+
+  .jackpot-banner {
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+  }
 }

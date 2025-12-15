@@ -3,39 +3,39 @@ import BetControls from '../components/DiceGame/BetControls';
 import RollControls from '../components/DiceGame/RollControls';
 import GameStats from '../components/DiceGame/GameStats';
 import Dice3D from '../components/DiceGame/Dice3D';
+import NeedTickets from '../components/NeedTickets';
 import { useDemoContext } from '../contexts/DemoContext';
 
 function HomePage({ wallet, dice, aiStrategy, clearAiStrategy, currentBet, onBetChange }) {
-  const { isDemoMode, demoBalance, setDemoBalance, demoStats } = useDemoContext();
+  const { isDemoMode, demoBalance, setDemoBalance, demoStats, realTickets, setRealTickets } = useDemoContext();
   const isConnected = wallet.account && wallet.isCorrectNetwork;
   const isPaused = dice.limits?.paused;
+
+  // Current balance based on mode
+  const currentBalance = isDemoMode ? demoBalance : realTickets;
+
+  // Use local simulation if contract isn't deployed (but still use real tickets if not in demo mode)
+  const usesLocalSimulation = !dice.isContractDeployed;
 
   // Demo mode state
   const [demoPendingBet, setDemoPendingBet] = useState(null);
   const [demoLastResult, setDemoLastResult] = useState(null);
   const [demoLoading, setDemoLoading] = useState(false);
 
-  // Payout multipliers for demo mode
-  const DEMO_PAYOUTS = {
-    0: 5.82, // Exact
-    1: 0,    // Over (variable)
-    2: 0,    // Under (variable)
-    3: 1.94, // Odd
-    4: 1.94, // Even
-  };
-
   // Calculate demo payout based on bet type
   const calculateDemoPayout = (amount, betType, chosenNumber) => {
-    if (betType === 0) return amount * 5.82; // Exact
-    if (betType === 3 || betType === 4) return amount * 1.94; // Odd/Even
+    const betAmount = parseFloat(amount) || 0;
+    if (betAmount <= 0) return 0;
+    if (betType === 0) return betAmount * 5.82; // Exact
+    if (betType === 3 || betType === 4) return betAmount * 1.94; // Odd/Even
     // Over/Under calculations
     if (betType === 1) { // Over
       const winCount = 6 - chosenNumber;
-      return winCount > 0 ? amount * (6 / winCount) * 0.97 : 0;
+      return winCount > 0 ? betAmount * (6 / winCount) * 0.97 : 0;
     }
     if (betType === 2) { // Under
       const winCount = chosenNumber - 1;
-      return winCount > 0 ? amount * (6 / winCount) * 0.97 : 0;
+      return winCount > 0 ? betAmount * (6 / winCount) * 0.97 : 0;
     }
     return 0;
   };
@@ -66,44 +66,45 @@ function HomePage({ wallet, dice, aiStrategy, clearAiStrategy, currentBet, onBet
 
   // Handle placing a bet (demo or real)
   const handlePlaceBet = async (amount, betType, chosenNumber) => {
+    const betAmount = parseFloat(amount);
+
+    // Check balance based on mode
     if (isDemoMode) {
-      // Demo mode bet
-      const betAmount = parseFloat(amount);
       if (betAmount > demoBalance) {
-        alert('Insufficient demo balance!');
+        alert('Insufficient demo balance! Visit the Cashier to get more tickets.');
         return;
       }
-
       // Deduct bet and store pending bet
       setDemoBalance(prev => prev - betAmount);
-      setDemoPendingBet({
-        amount: betAmount,
-        betType,
-        chosenNumber,
-        potentialPayout: calculateDemoPayout(betAmount, betType, chosenNumber)
-      });
-      return;
+    } else {
+      // Real mode
+      if (betAmount > realTickets) {
+        alert('Insufficient ticket balance! Buy tickets at the Cashier.');
+        return;
+      }
+      // Deduct bet from real tickets
+      setRealTickets(prev => prev - betAmount);
     }
 
-    // Real mode bet
-    if (!dice.placeBet) return;
+    // Store pending bet for local simulation
+    setDemoPendingBet({
+      amount: betAmount,
+      betType,
+      chosenNumber,
+      potentialPayout: calculateDemoPayout(betAmount, betType, chosenNumber)
+    });
 
-    try {
-      await dice.placeBet(amount, betType, chosenNumber);
-      if (onBetChange) {
-        onBetChange({
-          betType,
-          betTypeName: ['Exact', 'Over', 'Under', 'Odd', 'Even'][betType],
-          chosenNumber,
-          betAmount: amount
-        });
-      }
-    } catch (err) {
-      console.error('Error placing bet:', err);
+    if (onBetChange) {
+      onBetChange({
+        betType,
+        betTypeName: ['Exact', 'Over', 'Under', 'Odd', 'Even'][betType],
+        chosenNumber,
+        betAmount: amount
+      });
     }
   };
 
-  // Handle demo roll
+  // Handle roll (works for both demo and real mode)
   const handleDemoRoll = async () => {
     if (!demoPendingBet) return;
 
@@ -115,9 +116,13 @@ function HomePage({ wallet, dice, aiStrategy, clearAiStrategy, currentBet, onBet
     const { diceValue, won } = simulateDemoRoll(demoPendingBet.betType, demoPendingBet.chosenNumber);
     const payout = won ? demoPendingBet.potentialPayout : 0;
 
-    // Credit winnings if won
+    // Credit winnings based on mode
     if (won) {
-      setDemoBalance(prev => prev + payout);
+      if (isDemoMode) {
+        setDemoBalance(prev => prev + payout);
+      } else {
+        setRealTickets(prev => prev + payout);
+      }
     }
 
     setDemoLastResult({
@@ -133,11 +138,15 @@ function HomePage({ wallet, dice, aiStrategy, clearAiStrategy, currentBet, onBet
     setDemoLoading(false);
   };
 
-  // Handle demo cancel
+  // Handle cancel (refund bet)
   const handleDemoCancel = () => {
     if (demoPendingBet) {
-      // Refund the bet
-      setDemoBalance(prev => prev + demoPendingBet.amount);
+      // Refund the bet based on mode
+      if (isDemoMode) {
+        setDemoBalance(prev => prev + demoPendingBet.amount);
+      } else {
+        setRealTickets(prev => prev + demoPendingBet.amount);
+      }
       setDemoPendingBet(null);
     }
   };
@@ -147,24 +156,40 @@ function HomePage({ wallet, dice, aiStrategy, clearAiStrategy, currentBet, onBet
     setDemoLastResult(null);
   };
 
-  // Get the appropriate pending bet and result based on mode
-  const activePendingBet = isDemoMode ? demoPendingBet : dice.pendingBet;
-  const activeLastResult = isDemoMode ? demoLastResult : dice.lastResult;
-  const activeLoading = isDemoMode ? demoLoading : dice.loading;
+  // Use local simulation state (pending bet and result)
+  const activePendingBet = demoPendingBet;
+  const activeLastResult = demoLastResult;
+  const activeLoading = demoLoading;
+
+  // Check if user needs tickets (either mode)
+  const needsTickets = currentBalance <= 0;
 
   return (
     <div className="dice-page">
+      {/* Need Tickets Overlay - only use forceDemo if actually in demo mode */}
+      {needsTickets && <NeedTickets gameName="SUITRUMP Dice" isWalletConnected={isConnected} />}
+
       {/* Demo Mode Banner */}
       {isDemoMode && (
         <div className="demo-mode-banner">
           <span className="demo-icon">🎮</span>
           <span className="demo-text">
-            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} demo SUIT tokens. No wallet needed!
+            <strong>FREE PLAY MODE</strong> - {demoBalance > 0 ? `${demoBalance.toLocaleString()} tickets available` : 'Get tickets at Cashier to play!'}
           </span>
         </div>
       )}
 
-      {/* Connect Wallet Banner - only in real mode */}
+      {/* Real Mode - Testnet Banner */}
+      {!isDemoMode && isConnected && (
+        <div className="testnet-mode-banner" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)', padding: '10px 20px', borderRadius: '8px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', border: '1px solid #3b82f6' }}>
+          <span style={{ fontSize: '1.2rem' }}>🔗</span>
+          <span style={{ color: '#93c5fd' }}>
+            <strong style={{ color: '#60a5fa' }}>TESTNET MODE</strong> - Playing with real tickets ({realTickets.toLocaleString()} available)
+          </span>
+        </div>
+      )}
+
+      {/* Connect Wallet Banner - only in real mode when not connected */}
       {!isDemoMode && !isConnected && (
         <div className="connect-banner">
           <button className="btn btn-connect-banner" onClick={wallet.connect}>
@@ -174,14 +199,14 @@ function HomePage({ wallet, dice, aiStrategy, clearAiStrategy, currentBet, onBet
       )}
 
       {/* Error Display */}
-      {!isDemoMode && dice.error && (
+      {dice.error && (
         <div className="error-banner">
           <p>{dice.error}</p>
         </div>
       )}
 
-      {/* Paused Warning - only in real mode */}
-      {!isDemoMode && isPaused && (
+      {/* Paused Warning */}
+      {isPaused && (
         <div className="warning-banner">
           Game is currently paused by admin
         </div>
@@ -196,12 +221,12 @@ function HomePage({ wallet, dice, aiStrategy, clearAiStrategy, currentBet, onBet
               <RollControls
                 pendingBet={activePendingBet}
                 lastResult={activeLastResult}
-                onRoll={isDemoMode ? handleDemoRoll : dice.rollDice}
-                onCancel={isDemoMode ? handleDemoCancel : dice.cancelBet}
-                canRoll={isDemoMode ? !!demoPendingBet : dice.canRoll}
+                onRoll={handleDemoRoll}
+                onCancel={handleDemoCancel}
+                canRoll={() => ({ canExecute: !!demoPendingBet, reason: '' })}
                 loading={activeLoading}
-                clearResult={isDemoMode ? clearDemoResult : dice.clearResult}
-                isDemoMode={isDemoMode}
+                clearResult={clearDemoResult}
+                isDemoMode={isDemoMode || usesLocalSimulation}
               />
             ) : (
               <div className="dice-idle">
@@ -217,35 +242,31 @@ function HomePage({ wallet, dice, aiStrategy, clearAiStrategy, currentBet, onBet
 
           {/* Right: Bet Controls */}
           <div className="bet-controls-area">
-            {isDemoMode && (
-              <div className="demo-game-balance">
-                <span className="balance-label">Demo Balance:</span>
-                <span className="balance-value">{demoBalance.toLocaleString()} SUIT</span>
-              </div>
-            )}
+            <div className="demo-game-balance">
+              <span className="balance-label">{isDemoMode ? 'Demo Balance:' : 'Ticket Balance:'}</span>
+              <span className="balance-value" style={isDemoMode ? { color: '#c4b5fd' } : {}}>{currentBalance.toLocaleString()} tickets</span>
+            </div>
             <BetControls
-              limits={isDemoMode ? { minBet: '1', maxBet: String(Math.floor(demoBalance)), paused: false } : dice.limits}
+              limits={{ minBet: '1', maxBet: String(Math.floor(currentBalance)), paused: false }}
               onPlaceBet={handlePlaceBet}
-              calculatePayout={isDemoMode ? calculateDemoPayout : dice.calculatePayout}
+              calculatePayout={calculateDemoPayout}
               loading={activeLoading}
-              disabled={(!isDemoMode && isPaused) || activePendingBet || (!isDemoMode && !isConnected)}
+              disabled={isPaused || activePendingBet || (!isDemoMode && !isConnected)}
             />
           </div>
         </div>
       </div>
 
-      {/* Game Statistics - only show in real mode */}
-      {!isDemoMode && <GameStats stats={dice.stats} limits={dice.limits} />}
+      {/* Game Statistics */}
+      <GameStats stats={dice.stats} limits={dice.limits} />
 
       {/* How to Play */}
       <div className="how-to-play-box">
         <h3>How to Play</h3>
         <ol className="how-to-steps">
-          <li><strong>Connect Wallet:</strong> Connect your MetaMask wallet to Sui Testnet</li>
           <li><strong>Choose Bet Type:</strong> Select from Exact, Over, Under, Odd, or Even</li>
-          <li><strong>Set Amount:</strong> Enter your bet amount in SUIT tokens</li>
-          <li><strong>Place Bet:</strong> Approve tokens and place your bet</li>
-          <li><strong>Wait:</strong> Wait ~6 seconds for block confirmation</li>
+          <li><strong>Set Amount:</strong> Enter your bet amount in tickets (1 ticket = $0.10)</li>
+          <li><strong>Place Bet:</strong> Click Place Bet to lock in your wager</li>
           <li><strong>Roll:</strong> Click Roll Dice to reveal your result!</li>
         </ol>
 

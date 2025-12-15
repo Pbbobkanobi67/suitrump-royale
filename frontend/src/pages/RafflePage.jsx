@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import { useDemoContext } from '../contexts/DemoContext';
+import { useGameWallet } from '../hooks/useGameWallet';
+import { CURRENT_NETWORK, getContract } from '../config/sui-config';
 
-function RafflePage({ wallet, raffle }) {
+// Get raffle contract address
+const RAFFLE_CONTRACT = getContract('raffle');
+
+function RafflePage({ raffle }) {
+  const gameWallet = useGameWallet();
   const { isDemoMode, demoBalance } = useDemoContext();
+  const account = useCurrentAccount();
+  const isWalletConnected = !!account;
   const [ticketAmount, setTicketAmount] = useState('10');
   const [drawStatus, setDrawStatus] = useState({ canRequest: false, canExecute: false });
   const [previousWinner, setPreviousWinner] = useState(null);
@@ -163,7 +172,7 @@ function RafflePage({ wallet, raffle }) {
     );
   }
 
-  if (!wallet.account) {
+  if (!isWalletConnected) {
     return (
       <div className="raffle-page">
         <div className="card" style={{ textAlign: 'center' }}>
@@ -171,6 +180,7 @@ function RafflePage({ wallet, raffle }) {
           <p style={{ color: 'var(--text-gray)', margin: '20px 0' }}>
             Connect your wallet to participate in the raffle
           </p>
+          <ConnectButton />
         </div>
       </div>
     );
@@ -191,6 +201,40 @@ function RafflePage({ wallet, raffle }) {
 
   return (
     <div className="raffle-page">
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="demo-mode-banner">
+          <span className="demo-icon">🎮</span>
+          <span className="demo-text">
+            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} tickets. No wallet needed!
+          </span>
+        </div>
+      )}
+
+      {/* Real Mode - Not Connected Banner */}
+      {!isDemoMode && !isWalletConnected && (
+        <div className="connect-wallet-banner">
+          <span className="wallet-icon">🔗</span>
+          <span className="wallet-text">
+            <strong>TESTNET MODE</strong> - Connect your Sui wallet to play with test tokens
+          </span>
+          <ConnectButton />
+        </div>
+      )}
+
+      {/* Real Mode - Connected Banner */}
+      {!isDemoMode && isWalletConnected && (
+        <div className="testnet-mode-banner">
+          <span className="testnet-icon">🧪</span>
+          <span className="testnet-text">
+            <strong>TESTNET MODE</strong> - Playing with TEST_SUITRUMP on {CURRENT_NETWORK}
+          </span>
+          <span className="wallet-address">
+            {account?.address?.slice(0, 6)}...{account?.address?.slice(-4)}
+          </span>
+        </div>
+      )}
+
       {/* Previous Winner Banner */}
       {previousWinner && (
         <div className="winner-banner">

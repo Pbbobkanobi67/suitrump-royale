@@ -1,4 +1,12 @@
 import React, { useState, useCallback } from 'react';
+import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
+import { useDemoContext } from '../contexts/DemoContext';
+import { useGameWallet } from '../hooks/useGameWallet';
+import NeedTickets from '../components/NeedTickets';
+import { CURRENT_NETWORK, getContract } from '../config/sui-config';
+
+// Get keno contract address (null until deployed)
+const KENO_CONTRACT = getContract('keno');
 
 // Payout tables based on number of picks
 const PAYOUT_TABLES = {
@@ -17,12 +25,16 @@ const MAX_PAYOUTS = [
   { picks: 5, maxWin: '100x' }
 ];
 
-const BET_OPTIONS = [1, 5, 10, 25, 50, 100];
+const BET_OPTIONS = [1, 5, 10, 25, 50, 100, 500];
 const GRID_SIZE = 40;
 const MAX_PICKS = 5;
 const DRAW_COUNT = 10;
 
-function KenoPage({ wallet }) {
+function KenoPage() {
+  const gameWallet = useGameWallet();
+  const { isDemoMode, demoBalance, setDemoBalance, realTickets, setRealTickets } = useDemoContext();
+  const account = useCurrentAccount();
+  const isWalletConnected = !!account;
   const [selectedNumbers, setSelectedNumbers] = useState(new Set());
   const [drawnNumbers, setDrawnNumbers] = useState(new Set());
   const [betAmount, setBetAmount] = useState(1);
@@ -34,7 +46,11 @@ function KenoPage({ wallet }) {
     totalWon: 0
   });
 
-  const balance = wallet?.blueBalance || 1000;
+  // Current balance based on mode
+  const currentBalance = isDemoMode ? demoBalance : realTickets;
+
+  // Check if user needs tickets
+  const needsTickets = currentBalance <= 0;
 
   // Toggle number selection
   const toggleNumber = useCallback((num) => {
@@ -81,6 +97,28 @@ function KenoPage({ wallet }) {
   const draw = useCallback(async () => {
     if (selectedNumbers.size === 0 || isDrawing) return;
 
+    // Check balance based on mode
+    if (isDemoMode) {
+      if (betAmount > demoBalance) {
+        alert('Insufficient demo balance! Visit the Cashier to get more tickets.');
+        return;
+      }
+      // Deduct bet amount
+      setDemoBalance(prev => prev - betAmount);
+    } else {
+      // Real mode
+      if (!isWalletConnected) {
+        alert('Please connect your wallet to play');
+        return;
+      }
+      if (betAmount > realTickets) {
+        alert('Insufficient ticket balance! Buy tickets at the Cashier.');
+        return;
+      }
+      // Deduct bet amount from real tickets
+      setRealTickets(prev => prev - betAmount);
+    }
+
     setIsDrawing(true);
     setDrawnNumbers(new Set());
 
@@ -109,6 +147,15 @@ function KenoPage({ wallet }) {
     const multiplier = payoutTable[matches] || 0;
     const winAmount = betAmount * multiplier;
 
+    // Credit winnings based on mode
+    if (winAmount > 0) {
+      if (isDemoMode) {
+        setDemoBalance(prev => prev + winAmount);
+      } else {
+        setRealTickets(prev => prev + winAmount);
+      }
+    }
+
     setLastResult({
       matches,
       picks: pickCount,
@@ -124,7 +171,7 @@ function KenoPage({ wallet }) {
     }));
 
     setIsDrawing(false);
-  }, [selectedNumbers, betAmount, isDrawing]);
+  }, [selectedNumbers, betAmount, isDrawing, isDemoMode, demoBalance, setDemoBalance, realTickets, setRealTickets, isWalletConnected]);
 
   // Get current payout table based on picks
   const currentPayouts = PAYOUT_TABLES[selectedNumbers.size] || {};
@@ -146,6 +193,43 @@ function KenoPage({ wallet }) {
 
   return (
     <div className="keno-page">
+      {/* Need Tickets Overlay */}
+      {needsTickets && <NeedTickets gameName="SUITRUMP Keno" isWalletConnected={isWalletConnected} />}
+
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="demo-mode-banner">
+          <span className="demo-icon">🎮</span>
+          <span className="demo-text">
+            <strong>FREE PLAY MODE</strong> - {demoBalance > 0 ? `${demoBalance.toLocaleString()} tickets available` : 'Get tickets at Cashier!'}
+          </span>
+        </div>
+      )}
+
+      {/* Real Mode - Not Connected Banner */}
+      {!isDemoMode && !isWalletConnected && (
+        <div className="connect-wallet-banner">
+          <span className="wallet-icon">🔗</span>
+          <span className="wallet-text">
+            <strong>TESTNET MODE</strong> - Connect your Sui wallet to play with test tokens
+          </span>
+          <ConnectButton />
+        </div>
+      )}
+
+      {/* Real Mode - Connected Banner */}
+      {!isDemoMode && isWalletConnected && (
+        <div className="testnet-mode-banner">
+          <span className="testnet-icon">🧪</span>
+          <span className="testnet-text">
+            <strong>TESTNET MODE</strong> - Playing with TEST_SUITRUMP on {CURRENT_NETWORK}
+          </span>
+          <span className="wallet-address">
+            {account?.address?.slice(0, 6)}...{account?.address?.slice(-4)}
+          </span>
+        </div>
+      )}
+
       <div className="keno-header">
         <h2>SUITRUMP Keno</h2>
         <p className="keno-subtitle">Pick your lucky numbers and watch the draw reveal your fortune!</p>
@@ -155,12 +239,12 @@ function KenoPage({ wallet }) {
         <div className="keno-grid-container">
           <div className="keno-board-header">
             <div className="keno-balance">
-              <span className="balance-label">Balance</span>
-              <span className="balance-value">{parseFloat(balance).toLocaleString()} SUIT</span>
+              <span className="balance-label">{isDemoMode ? 'Demo Balance' : 'Ticket Balance'}</span>
+              <span className="balance-value" style={isDemoMode ? { color: '#c4b5fd' } : {}}>{currentBalance.toLocaleString()} tickets</span>
             </div>
 
             <div className="keno-bet-selector">
-              <span className="bet-label">Bet:</span>
+              <span className="bet-label">Bet: <span className="usd-hint">(${(betAmount * 0.10).toFixed(2)} USD)</span></span>
               {BET_OPTIONS.map(amount => (
                 <button
                   key={amount}
@@ -240,23 +324,21 @@ function KenoPage({ wallet }) {
           <div className="keno-panel result-panel">
             <h4>Result</h4>
             {lastResult ? (
-              <div className={`result-display ${lastResult.isWin ? 'win' : 'loss'}`}>
+              <div className={`keno-result-display ${lastResult.isWin ? 'win' : 'loss'}`}>
+                <div className="keno-result-matches">
+                  {lastResult.matches}
+                </div>
+                <div className="keno-result-label">
+                  {lastResult.matches === 1 ? 'Match' : 'Matches'}
+                </div>
                 {lastResult.isWin ? (
-                  <>
-                    <span className="result-icon">🎉</span>
-                    <span className="result-matches">{lastResult.matches} Match{lastResult.matches > 1 ? 'es' : ''}!</span>
-                    <span className="result-amount">+{lastResult.winAmount} SUIT</span>
-                  </>
+                  <div className="keno-result-win">+{lastResult.winAmount} tickets</div>
                 ) : (
-                  <>
-                    <span className="result-icon">😔</span>
-                    <span className="result-matches">{lastResult.matches} Match{lastResult.matches !== 1 ? 'es' : ''}</span>
-                    <span className="result-text">Try again!</span>
-                  </>
+                  <div className="keno-result-lose">Try again!</div>
                 )}
               </div>
             ) : (
-              <div className="result-placeholder">
+              <div className="keno-result-placeholder">
                 <img src="/suitrump-mascot.png" alt="SUIT" className="placeholder-whale" />
                 <span>Pick and draw!</span>
               </div>

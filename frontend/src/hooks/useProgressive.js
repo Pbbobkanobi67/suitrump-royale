@@ -20,10 +20,11 @@ export function useProgressive(account) {
   const suiClient = useSuiClient();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
 
+  const isContractDeployed = SUI_CONFIG.games?.progressive && !SUI_CONFIG.games.progressive.startsWith('0x_');
+
   // Fetch house stats
   const fetchStats = useCallback(async () => {
-    if (!SUI_CONFIG.games.progressive || SUI_CONFIG.games.progressive.startsWith('0x_')) {
-      console.log('Progressive contract not deployed yet');
+    if (!isContractDeployed) {
       return;
     }
 
@@ -49,17 +50,16 @@ export function useProgressive(account) {
     } catch (err) {
       console.error('Error fetching progressive stats:', err);
     }
-  }, [suiClient]);
+  }, [suiClient, isContractDeployed]);
 
-  // Roll for jackpot (costs 1 SUIT)
+  // Roll for jackpot
   const roll = useCallback(async () => {
     if (!account) {
       setError('Please connect your wallet');
       return null;
     }
 
-    if (!SUI_CONFIG.games.progressive || SUI_CONFIG.games.progressive.startsWith('0x_')) {
-      setError('Progressive contract not deployed yet');
+    if (!isContractDeployed) {
       return null;
     }
 
@@ -67,8 +67,7 @@ export function useProgressive(account) {
     setError(null);
 
     try {
-      const ticketPrice = parseSuit('1'); // 1 SUIT per roll
-
+      const ticketPrice = parseSuit('1');
       const tx = new Transaction();
       const [paymentCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(ticketPrice)]);
 
@@ -87,11 +86,8 @@ export function useProgressive(account) {
         options: { showEvents: true }
       });
 
-      // Parse the RollResult event
       if (result.events?.length > 0) {
-        const rollEvent = result.events.find(e =>
-          e.type.includes('RollResult')
-        );
+        const rollEvent = result.events.find(e => e.type.includes('RollResult'));
         if (rollEvent?.parsedJson) {
           const eventData = rollEvent.parsedJson;
           setLastResult({
@@ -114,7 +110,7 @@ export function useProgressive(account) {
       setLoading(false);
       return null;
     }
-  }, [account, signAndExecute, fetchStats]);
+  }, [account, signAndExecute, fetchStats, isContractDeployed]);
 
   useEffect(() => {
     fetchStats();
@@ -127,7 +123,8 @@ export function useProgressive(account) {
     targetDice,
     lastResult,
     roll,
-    fetchStats
+    fetchStats,
+    isContractDeployed
   };
 }
 

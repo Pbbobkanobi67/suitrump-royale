@@ -198,14 +198,57 @@ export function useRaffle(account) {
     fetchUserTickets();
   }, [fetchRoundInfo, fetchUserTickets, account]);
 
+  // Check if contract is deployed (package ID is set and not a placeholder)
+  const isContractDeployed = SUI_CONFIG.packageIds.raffle &&
+    !SUI_CONFIG.packageIds.raffle.startsWith('0x_');
+
+  // Clear error helper
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // Placeholder functions for advanced raffle features
+  const canRequestDraw = useCallback(async () => {
+    return { canRequest: false, reason: 'Not implemented yet' };
+  }, []);
+
+  const canExecuteDraw = useCallback(async () => {
+    return { canExecute: false, reason: 'Not implemented yet' };
+  }, []);
+
+  const requestDraw = useCallback(async () => {
+    return drawWinner();
+  }, [drawWinner]);
+
+  const executeDraw = useCallback(async () => {
+    return drawWinner();
+  }, [drawWinner]);
+
+  const cancelRound = useCallback(async () => {
+    setError('Cancel round not implemented yet');
+    return null;
+  }, []);
+
+  const getPreviousRoundWinner = useCallback(async () => {
+    return null;
+  }, []);
+
   return {
     loading,
     error,
     roundInfo,
     userTickets,
     stats,
+    contract: isContractDeployed,
     buyTickets,
     drawWinner,
+    requestDraw,
+    executeDraw,
+    canRequestDraw,
+    canExecuteDraw,
+    cancelRound,
+    getPreviousRoundWinner,
+    clearError,
     fetchRoundInfo,
     fetchUserTickets,
     ROUND_STATUS,

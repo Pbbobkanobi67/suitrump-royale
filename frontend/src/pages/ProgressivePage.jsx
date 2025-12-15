@@ -1,9 +1,28 @@
 import React, { useState, useMemo } from 'react';
+import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import Dice3D from '../components/DiceGame/Dice3D';
 import { useDemoContext } from '../contexts/DemoContext';
+import { useGameWallet } from '../hooks/useGameWallet';
+import NeedTickets from '../components/NeedTickets';
+import { CURRENT_NETWORK, getContract } from '../config/sui-config';
 
-function ProgressivePage({ wallet, progressive }) {
-  const { isDemoMode, demoBalance, setDemoBalance } = useDemoContext();
+// Get progressive contract address (null until deployed)
+const PROGRESSIVE_CONTRACT = getContract('progressive');
+
+function ProgressivePage({ progressive }) {
+  const gameWallet = useGameWallet();
+  const { isDemoMode, demoBalance, setDemoBalance, realTickets, setRealTickets } = useDemoContext();
+  const account = useCurrentAccount();
+  const isWalletConnected = !!account;
+
+  // Check if contract is deployed
+  const isContractDeployed = progressive.stats && progressive.isContractDeployed !== false;
+
+  // Current balance based on mode
+  const currentBalance = isDemoMode ? demoBalance : realTickets;
+
+  // Use local simulation if contract isn't deployed (but still use real tickets if not in demo mode)
+  const usesLocalSimulation = !isContractDeployed;
   // Determine which rolled dice and target dice match
   const { matchedRollIndices, matchedTargetIndices } = useMemo(() => {
     if (!progressive.lastResult || !progressive.targetDice) {
@@ -66,13 +85,26 @@ function ProgressivePage({ wallet, progressive }) {
     return matches;
   };
 
-  // Demo roll handler
-  const handleDemoRoll = async () => {
-    if (DEMO_TICKET_PRICE > demoBalance) {
-      return;
+  // Local simulation roll handler (works for both demo and real mode when contract not deployed)
+  const handleLocalRoll = async () => {
+    // Check balance based on mode
+    if (isDemoMode) {
+      if (DEMO_TICKET_PRICE > demoBalance) {
+        return;
+      }
+      setDemoBalance(prev => prev - DEMO_TICKET_PRICE);
+    } else {
+      if (!isWalletConnected) {
+        alert('Please connect your wallet to play');
+        return;
+      }
+      if (DEMO_TICKET_PRICE > realTickets) {
+        alert('Insufficient ticket balance! Buy tickets at the Cashier.');
+        return;
+      }
+      setRealTickets(prev => prev - DEMO_TICKET_PRICE);
     }
 
-    setDemoBalance(prev => prev - DEMO_TICKET_PRICE);
     setDemoLoading(true);
     setDemoLastResult(null);
 
@@ -107,8 +139,13 @@ function ProgressivePage({ wallet, progressive }) {
       payout = DEMO_PAYOUTS.match2;
     }
 
+    // Credit winnings based on mode
     if (payout > 0) {
-      setDemoBalance(prev => prev + payout);
+      if (isDemoMode) {
+        setDemoBalance(prev => prev + payout);
+      } else {
+        setRealTickets(prev => prev + payout);
+      }
     }
 
     setDemoLastResult({
@@ -120,7 +157,13 @@ function ProgressivePage({ wallet, progressive }) {
     setDemoLoading(false);
   };
 
-  const isConnected = wallet.account && wallet.isCorrectNetwork;
+  // Legacy alias for demo mode
+  const handleDemoRoll = handleLocalRoll;
+
+  // Determine if we're using demo mode (either demo mode enabled or local simulation without wallet)
+  const usesDemoMode = isDemoMode || usesLocalSimulation;
+
+  const isConnected = isWalletConnected;
   const isPaused = progressive.stats?.paused;
   const hasJackpot = progressive.stats && parseFloat(progressive.stats.jackpotPool) >= 5;
   const targetRevealed = progressive.targetDice?.isRevealed;
@@ -199,19 +242,19 @@ function ProgressivePage({ wallet, progressive }) {
   };
 
   // Get active result based on mode
-  const activeLastResult = isDemoMode ? demoLastResult : progressive.lastResult;
-  const activeTargetDice = isDemoMode ? demoTargetDice : (progressive.targetDice ? [
+  const activeLastResult = usesDemoMode ? demoLastResult : progressive.lastResult;
+  const activeTargetDice = usesDemoMode ? demoTargetDice : (progressive.targetDice ? [
     progressive.targetDice.die1,
     progressive.targetDice.die2,
     progressive.targetDice.die3,
     progressive.targetDice.die4
   ] : null);
-  const activeLoading = isDemoMode ? demoLoading : progressive.loading;
-  const activeTicketPrice = isDemoMode ? DEMO_TICKET_PRICE : ticketPrice;
+  const activeLoading = usesDemoMode ? demoLoading : progressive.loading;
+  const activeTicketPrice = usesDemoMode ? DEMO_TICKET_PRICE : ticketPrice;
 
   // Calculate matches for demo mode display
   const demoMatchedRollIndices = useMemo(() => {
-    if (!isDemoMode || !demoLastResult) return [];
+    if (!usesDemoMode || !demoLastResult) return [];
     const matched = [];
     const remaining = [...demoTargetDice];
     demoLastResult.rolledDice.forEach((die, idx) => {
@@ -222,22 +265,52 @@ function ProgressivePage({ wallet, progressive }) {
       }
     });
     return matched;
-  }, [isDemoMode, demoLastResult, demoTargetDice]);
+  }, [usesDemoMode, demoLastResult, demoTargetDice]);
+
+  // Check if user needs tickets
+  const needsTickets = currentBalance <= 0;
 
   return (
     <div className="progressive-page-v2">
+      {/* Need Tickets Overlay */}
+      {needsTickets && <NeedTickets gameName="Progressive Jackpot" isWalletConnected={isWalletConnected} />}
+
       {/* Demo Mode Banner */}
-      {isDemoMode && (
+      {usesDemoMode && (
         <div className="demo-mode-banner">
           <span className="demo-icon">🎮</span>
           <span className="demo-text">
-            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} demo SUIT tokens. No wallet needed!
+            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} tickets. No wallet needed!
+          </span>
+        </div>
+      )}
+
+      {/* Real Mode - Not Connected Banner */}
+      {!usesDemoMode && !isWalletConnected && (
+        <div className="connect-wallet-banner">
+          <span className="wallet-icon">🔗</span>
+          <span className="wallet-text">
+            <strong>TESTNET MODE</strong> - Connect your Sui wallet to play with test tokens
+          </span>
+          <ConnectButton />
+        </div>
+      )}
+
+      {/* Real Mode - Connected Banner */}
+      {!usesDemoMode && isWalletConnected && (
+        <div className="testnet-mode-banner">
+          <span className="testnet-icon">🧪</span>
+          <span className="testnet-text">
+            <strong>TESTNET MODE</strong> - Playing with TEST_SUITRUMP on {CURRENT_NETWORK}
+          </span>
+          <span className="wallet-address">
+            {account?.address?.slice(0, 6)}...{account?.address?.slice(-4)}
           </span>
         </div>
       )}
 
       {/* Error Display */}
-      {!isDemoMode && progressive.error && (
+      {!usesDemoMode && progressive.error && (
         <div className="error-banner">
           <p>{progressive.error}</p>
           <button onClick={progressive.clearError}>Dismiss</button>
@@ -248,38 +321,125 @@ function ProgressivePage({ wallet, progressive }) {
       <div className="progressive-card">
         {/* Jackpot Section */}
         <div className="jackpot-section">
-          <span className="jackpot-label">{isDemoMode ? 'DEMO JACKPOT' : 'JACKPOT'}</span>
-          <span className="jackpot-amount" style={isDemoMode ? { color: '#c4b5fd' } : {}}>
-            {isDemoMode ? DEMO_JACKPOT.toLocaleString() : parseFloat(progressive.stats?.jackpotPool || 0).toLocaleString()} SUIT
+          <span className="jackpot-label">{usesDemoMode ? 'DEMO JACKPOT' : 'JACKPOT'}</span>
+          <span className="jackpot-amount" style={usesDemoMode ? { color: '#c4b5fd' } : {}}>
+            {usesDemoMode ? DEMO_JACKPOT.toLocaleString() : parseFloat(progressive.stats?.jackpotPool || 0).toLocaleString()} tickets
           </span>
 
           <div className="payout-boxes">
             <div className="payout-box jackpot-box">
               <span className="box-label">4/4 Match</span>
               <span className="box-value jackpot-value">
-                {isDemoMode ? DEMO_PAYOUTS.jackpot.toLocaleString() : parseFloat(progressive.payouts?.jackpot || 0).toLocaleString()} SUIT
+                {usesDemoMode ? DEMO_PAYOUTS.jackpot.toLocaleString() : parseFloat(progressive.payouts?.jackpot || 0).toLocaleString()} tickets
               </span>
             </div>
             <div className="payout-box">
               <span className="box-label">3/4 Match</span>
-              <span className="box-value">{isDemoMode ? DEMO_PAYOUTS.match3 : parseFloat(progressive.payouts?.match3 || 0).toLocaleString()} SUIT</span>
+              <span className="box-value">{usesDemoMode ? DEMO_PAYOUTS.match3 : parseFloat(progressive.payouts?.match3 || 0).toLocaleString()} tickets</span>
             </div>
             <div className="payout-box">
               <span className="box-label">2/4 Match</span>
-              <span className="box-value">{isDemoMode ? DEMO_PAYOUTS.match2 : parseFloat(progressive.payouts?.match2 || 0)} SUIT</span>
+              <span className="box-value">{usesDemoMode ? DEMO_PAYOUTS.match2 : parseFloat(progressive.payouts?.match2 || 0)} tickets</span>
             </div>
             <div className="payout-box">
-              <span className="box-label">Ticket</span>
-              <span className="box-value">{activeTicketPrice} SUIT</span>
+              <span className="box-label">Ticket Price</span>
+              <span className="box-value">{activeTicketPrice} ticket = ${(activeTicketPrice * 0.10).toFixed(2)} USD</span>
             </div>
           </div>
         </div>
 
+        {/* Play/Roll Section - Moved to top for easy access */}
+        <div className="buy-section">
+          <h3 className="section-title">{usesDemoMode ? 'PLAY (DEMO)' : 'BUY TICKETS'}</h3>
+
+          {usesDemoMode ? (
+            // Demo mode - always available
+            <div className="buy-options">
+              <div className="buy-option">
+                <div className="option-header">
+                  <span className="option-icon">🎲</span>
+                  <span className="option-title">Demo Roll</span>
+                </div>
+                <div className="option-details">
+                  <span>{isDemoMode ? 'Demo Balance:' : 'Ticket Balance:'}</span>
+                  <span className="option-price" style={isDemoMode ? { color: '#c4b5fd' } : {}}>{currentBalance.toLocaleString()} tickets</span>
+                </div>
+                <button
+                  className="btn btn-primary btn-glow"
+                  onClick={handleDemoRoll}
+                  disabled={demoLoading || DEMO_TICKET_PRICE > currentBalance}
+                >
+                  {demoLoading ? 'Rolling...' : `ROLL - ${DEMO_TICKET_PRICE} ticket`}
+                </button>
+              </div>
+            </div>
+          ) : !isConnected ? (
+            <p className="connect-prompt">Connect wallet to play</p>
+          ) : !targetRevealed ? (
+            <p className="connect-prompt">Waiting for round to start...</p>
+          ) : (
+            <div className="buy-options">
+              {/* Single Roll */}
+              <div className="buy-option">
+                <div className="option-header">
+                  <span className="option-icon">🎲</span>
+                  <span className="option-title">Single Roll</span>
+                </div>
+                <div className="option-details">
+                  <span>1 ticket</span>
+                  <span className="option-price">{ticketPrice} tickets</span>
+                </div>
+                <button
+                  className="btn btn-primary btn-glow"
+                  onClick={handleSingleRoll}
+                  disabled={!canPlay || progressive.loading || isAutoRolling}
+                >
+                  {progressive.loading ? 'Rolling...' : 'BUY 1 TICKET'}
+                </button>
+              </div>
+
+              {/* Auto Roll */}
+              <div className="buy-option">
+                <div className="option-header">
+                  <span className="option-icon">🎰</span>
+                  <span className="option-title">Auto-Roll</span>
+                </div>
+                <div className="option-details">
+                  <input
+                    type="number"
+                    value={autoRollCount}
+                    onChange={(e) => setAutoRollCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                    min="1"
+                    max="50"
+                    className="auto-roll-input"
+                    disabled={isAutoRolling}
+                  />
+                  <span>tickets</span>
+                  <span className="option-price">{(autoRollCount * ticketPrice).toFixed(1)} tickets</span>
+                </div>
+                {isAutoRolling ? (
+                  <button className="btn btn-danger btn-glow" onClick={stopAutoRoll}>
+                    STOP AUTO-ROLL
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary btn-glow"
+                    onClick={handleAutoRoll}
+                    disabled={!canPlay || progressive.loading}
+                  >
+                    START AUTO-ROLL
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Target Dice Section */}
         <div className="target-section">
-          <h3 className="section-title">TARGET DICE {isDemoMode ? '(DEMO)' : `(ROUND #${progressive.targetDice?.roundId || 0})`}</h3>
+          <h3 className="section-title">TARGET DICE {usesDemoMode ? '(DEMO)' : `(ROUND #${progressive.targetDice?.roundId || 0})`}</h3>
 
-          {isDemoMode ? (
+          {usesDemoMode ? (
             <div className="dice-display">
               {demoTargetDice.map((die, i) => (
                 <div key={i} className="dice-with-value">
@@ -321,7 +481,7 @@ function ProgressivePage({ wallet, progressive }) {
         <div className="roll-section">
           <h3 className="section-title">YOUR ROLL</h3>
 
-          {isDemoMode ? (
+          {usesDemoMode ? (
             // Demo mode roll display
             demoLastResult ? (
               <>
@@ -333,12 +493,18 @@ function ProgressivePage({ wallet, progressive }) {
                     </div>
                   ))}
                 </div>
-                <div className={`result-display ${demoLastResult.isJackpot ? 'jackpot-win' : demoLastResult.matches >= 2 ? 'win' : 'loss'}`}>
-                  <span className="result-matches">{demoLastResult.matches}/4 Matches</span>
-                  {demoLastResult.payout > 0 && (
-                    <span className="result-payout">+{demoLastResult.payout} SUIT</span>
-                  )}
-                  {demoLastResult.isJackpot && <span className="jackpot-text">JACKPOT!</span>}
+                {/* Result Section - Separate from dice */}
+                <div className="roll-result-section">
+                  <div className={`roll-result-box ${demoLastResult.isJackpot ? 'jackpot' : demoLastResult.matches >= 2 ? 'win' : 'loss'}`}>
+                    <div className="result-matches-display">{demoLastResult.matches}/4</div>
+                    <div className="result-matches-label">Matches</div>
+                    {demoLastResult.payout > 0 && (
+                      <div className="result-payout-display">+{demoLastResult.payout.toLocaleString()} tickets</div>
+                    )}
+                    {demoLastResult.isJackpot && (
+                      <div className="jackpot-banner">JACKPOT!</div>
+                    )}
+                  </div>
                 </div>
               </>
             ) : demoLoading ? (
@@ -368,12 +534,18 @@ function ProgressivePage({ wallet, progressive }) {
                     </div>
                   ))}
                 </div>
-                <div className={`result-display ${progressive.lastResult.isJackpot ? 'jackpot-win' : progressive.lastResult.matches >= 2 ? 'win' : 'loss'}`}>
-                  <span className="result-matches">{progressive.lastResult.matches}/4 Matches</span>
-                  {parseFloat(progressive.lastResult.payout) > 0 && (
-                    <span className="result-payout">+{progressive.lastResult.payout} SUIT</span>
-                  )}
-                  {progressive.lastResult.isJackpot && <span className="jackpot-text">JACKPOT!</span>}
+                {/* Result Section - Separate from dice */}
+                <div className="roll-result-section">
+                  <div className={`roll-result-box ${progressive.lastResult.isJackpot ? 'jackpot' : progressive.lastResult.matches >= 2 ? 'win' : 'loss'}`}>
+                    <div className="result-matches-display">{progressive.lastResult.matches}/4</div>
+                    <div className="result-matches-label">Matches</div>
+                    {parseFloat(progressive.lastResult.payout) > 0 && (
+                      <div className="result-payout-display">+{parseFloat(progressive.lastResult.payout).toLocaleString()} tickets</div>
+                    )}
+                    {progressive.lastResult.isJackpot && (
+                      <div className="jackpot-banner">JACKPOT!</div>
+                    )}
+                  </div>
                 </div>
               </>
             ) : progressive.pendingRoll ? (
@@ -400,98 +572,11 @@ function ProgressivePage({ wallet, progressive }) {
           )}
         </div>
 
-        {/* Buy Tickets Section */}
-        <div className="buy-section">
-          <h3 className="section-title">{isDemoMode ? 'PLAY (DEMO)' : 'BUY TICKETS'}</h3>
-
-          {isDemoMode ? (
-            // Demo mode - always available
-            <div className="buy-options">
-              <div className="buy-option">
-                <div className="option-header">
-                  <span className="option-icon">🎲</span>
-                  <span className="option-title">Demo Roll</span>
-                </div>
-                <div className="option-details">
-                  <span>Demo Balance:</span>
-                  <span className="option-price" style={{ color: '#c4b5fd' }}>{demoBalance.toLocaleString()} SUIT</span>
-                </div>
-                <button
-                  className="btn btn-primary btn-glow"
-                  onClick={handleDemoRoll}
-                  disabled={demoLoading || DEMO_TICKET_PRICE > demoBalance}
-                >
-                  {demoLoading ? 'Rolling...' : `ROLL - ${DEMO_TICKET_PRICE} SUIT`}
-                </button>
-              </div>
-            </div>
-          ) : !isConnected ? (
-            <p className="connect-prompt">Connect wallet to play</p>
-          ) : !targetRevealed ? (
-            <p className="connect-prompt">Waiting for round to start...</p>
-          ) : (
-            <div className="buy-options">
-              {/* Single Roll */}
-              <div className="buy-option">
-                <div className="option-header">
-                  <span className="option-icon">🎲</span>
-                  <span className="option-title">Single Roll</span>
-                </div>
-                <div className="option-details">
-                  <span>1 ticket</span>
-                  <span className="option-price">{ticketPrice} SUIT</span>
-                </div>
-                <button
-                  className="btn btn-primary btn-glow"
-                  onClick={handleSingleRoll}
-                  disabled={!canPlay || progressive.loading || isAutoRolling}
-                >
-                  {progressive.loading ? 'Rolling...' : 'BUY 1 TICKET'}
-                </button>
-              </div>
-
-              {/* Auto Roll */}
-              <div className="buy-option">
-                <div className="option-header">
-                  <span className="option-icon">🎰</span>
-                  <span className="option-title">Auto-Roll</span>
-                </div>
-                <div className="option-details">
-                  <input
-                    type="number"
-                    value={autoRollCount}
-                    onChange={(e) => setAutoRollCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                    min="1"
-                    max="50"
-                    className="auto-roll-input"
-                    disabled={isAutoRolling}
-                  />
-                  <span>tickets</span>
-                  <span className="option-price">{(autoRollCount * ticketPrice).toFixed(1)} SUIT</span>
-                </div>
-                {isAutoRolling ? (
-                  <button className="btn btn-danger btn-glow" onClick={stopAutoRoll}>
-                    STOP AUTO-ROLL
-                  </button>
-                ) : (
-                  <button
-                    className="btn btn-primary btn-glow"
-                    onClick={handleAutoRoll}
-                    disabled={!canPlay || progressive.loading}
-                  >
-                    START AUTO-ROLL
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Status Messages - only show in real mode */}
-        {!isDemoMode && isPaused && (
+        {!usesDemoMode && isPaused && (
           <div className="status-message warning">Game is currently paused</div>
         )}
-        {!isDemoMode && !hasJackpot && !isPaused && (
+        {!usesDemoMode && !hasJackpot && !isPaused && (
           <div className="status-message warning">Jackpot needs funding before play can begin</div>
         )}
       </div>
@@ -505,7 +590,7 @@ function ProgressivePage({ wallet, progressive }) {
           <div className="instructions-column">
             <ol className="instructions-list">
               <li><strong>Target Dice:</strong> 4 target dice are set for the round</li>
-              <li><strong>Buy Roll:</strong> Pay {ticketPrice} SUIT to roll 4 dice</li>
+              <li><strong>Buy Roll:</strong> Pay {ticketPrice} ticket to roll 4 dice</li>
               <li><strong>Match:</strong> Try to match all 4 target dice (order doesn't matter)</li>
               <li><strong>Win:</strong> Match 4/4 for the jackpot, 3/4 or 2/4 for smaller prizes</li>
             </ol>
@@ -528,7 +613,7 @@ function ProgressivePage({ wallet, progressive }) {
                 </tr>
                 <tr>
                   <td>3/4</td>
-                  <td>1% of pot (min 5 SUIT)</td>
+                  <td>1% of pot (min 5 tickets)</td>
                 </tr>
                 <tr>
                   <td>2/4</td>

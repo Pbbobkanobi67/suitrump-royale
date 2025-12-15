@@ -2,6 +2,32 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 
 const STORAGE_KEY = 'suitrumpRoyale_gameSettings';
 const PLINKO_SETTINGS_KEY = 'suitrumpRoyale_plinkoSettings';
+const BETTING_LIMITS_KEY = 'suitrumpRoyale_bettingLimits';
+
+// Default betting limits per game (in tickets, 1 ticket = $0.10)
+const DEFAULT_BETTING_LIMITS = {
+  dice: { minBet: 1, maxBet: 10000 },
+  slots: { minBet: 1, maxBet: 5000 },
+  crash: { minBet: 1, maxBet: 10000 },
+  roulette: { minBet: 1, maxBet: 10000 },
+  plinko: { minBet: 1, maxBet: 5000 },
+  keno: { minBet: 1, maxBet: 2000 },
+  progressive: { minBet: 1, maxBet: 100 },
+  raffle: { minBet: 1, maxBet: 10000 }
+};
+
+// Load betting limits from localStorage
+const loadBettingLimits = () => {
+  try {
+    const saved = localStorage.getItem(BETTING_LIMITS_KEY);
+    if (saved) {
+      return { ...DEFAULT_BETTING_LIMITS, ...JSON.parse(saved) };
+    }
+  } catch (e) {
+    console.error('Error loading betting limits:', e);
+  }
+  return DEFAULT_BETTING_LIMITS;
+};
 
 // Default Plinko settings
 const DEFAULT_PLINKO_SETTINGS = {
@@ -174,6 +200,9 @@ export function GameProvider({ children, provider, signer, account }) {
   // Plinko settings
   const [plinkoSettings, setPlinkoSettingsState] = useState(loadPlinkoSettings);
 
+  // Betting limits per game
+  const [bettingLimits, setBettingLimitsState] = useState(loadBettingLimits);
+
   // Save game settings to localStorage whenever they change
   useEffect(() => {
     const settings = {};
@@ -267,6 +296,34 @@ export function GameProvider({ children, provider, signer, account }) {
     }
   }, []);
 
+  // Update betting limits for a specific game
+  const updateBettingLimits = useCallback((gameId, limits) => {
+    setBettingLimitsState(prev => {
+      const updated = { ...prev, [gameId]: { ...prev[gameId], ...limits } };
+      try {
+        localStorage.setItem(BETTING_LIMITS_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Error saving betting limits:', e);
+      }
+      return updated;
+    });
+  }, []);
+
+  // Get betting limits for a specific game
+  const getBettingLimits = useCallback((gameId) => {
+    return bettingLimits[gameId] || DEFAULT_BETTING_LIMITS[gameId] || { minBet: 1, maxBet: 10000 };
+  }, [bettingLimits]);
+
+  // Reset betting limits to defaults
+  const resetBettingLimits = useCallback(() => {
+    setBettingLimitsState(DEFAULT_BETTING_LIMITS);
+    try {
+      localStorage.removeItem(BETTING_LIMITS_KEY);
+    } catch (e) {
+      console.error('Error resetting betting limits:', e);
+    }
+  }, []);
+
   const value = {
     // State
     games,
@@ -280,6 +337,12 @@ export function GameProvider({ children, provider, signer, account }) {
     plinkoSettings,
     updatePlinkoSettings,
     resetPlinkoSettings,
+
+    // Betting limits
+    bettingLimits,
+    updateBettingLimits,
+    getBettingLimits,
+    resetBettingLimits,
 
     // Methods
     isGamePlayable,

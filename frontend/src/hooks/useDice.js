@@ -20,6 +20,16 @@ export const BetTypeLabels = {
   [BetType.EVEN]: 'Even'
 };
 
+// Check demo mode from localStorage (same key as DemoContext)
+function checkDemoMode() {
+  try {
+    const saved = localStorage.getItem('suitrumpRoyale_demoMode');
+    return saved === 'true';
+  } catch {
+    return false;
+  }
+}
+
 // Hook for SUITRUMP Dice game
 export function useDice(account) {
   const [loading, setLoading] = useState(false);
@@ -27,7 +37,7 @@ export function useDice(account) {
   const [stats, setStats] = useState({
     totalBets: 0,
     totalWagered: '0',
-    houseBalance: '0',
+    houseBalance: '10000',
     isPaused: false
   });
   const [limits, setLimits] = useState({
@@ -39,19 +49,44 @@ export function useDice(account) {
   const suiClient = useSuiClient();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
 
-  // Fetch house stats from contract
+  const isContractDeployed = SUI_CONFIG.games?.dice && !SUI_CONFIG.games.dice.startsWith('0x_');
+
+  // Calculate potential payout based on bet type
+  const calculatePayout = useCallback((amount, betType, chosenNumber) => {
+    const betAmount = parseFloat(amount) || 0;
+    if (betAmount <= 0) return '0';
+
+    switch (betType) {
+      case BetType.EXACT:
+        return (betAmount * 5.82).toFixed(2);
+      case BetType.ODD:
+      case BetType.EVEN:
+        return (betAmount * 1.94).toFixed(2);
+      case BetType.OVER: {
+        const winCount = 6 - chosenNumber;
+        return winCount > 0 ? (betAmount * (6 / winCount) * 0.97).toFixed(2) : '0';
+      }
+      case BetType.UNDER: {
+        const winCount = chosenNumber - 1;
+        return winCount > 0 ? (betAmount * (6 / winCount) * 0.97).toFixed(2) : '0';
+      }
+      default:
+        return '0';
+    }
+  }, []);
+
   const fetchStats = useCallback(async () => {
-    if (!SUI_CONFIG.games.dice || SUI_CONFIG.games.dice.startsWith('0x_')) {
-      console.log('Dice contract not deployed yet');
+    // Don't show errors in demo mode or when contract isn't deployed
+    if (!isContractDeployed) {
+      setStats({ totalBets: 0, totalWagered: '0', houseBalance: '10000', isPaused: false });
+      setError(null); // Clear any error in demo/undeployed mode
       return;
     }
-
     try {
       const houseObject = await suiClient.getObject({
         id: SUI_CONFIG.games.dice,
         options: { showContent: true }
       });
-
       if (houseObject.data?.content?.fields) {
         const fields = houseObject.data.content.fields;
         setStats({
@@ -68,17 +103,18 @@ export function useDice(account) {
     } catch (err) {
       console.error('Error fetching dice stats:', err);
     }
-  }, [suiClient]);
+  }, [suiClient, isContractDeployed]);
 
-  // Place a bet on the dice game
   const placeBet = useCallback(async (betType, chosenNumber, amount) => {
-    if (!account) {
-      setError('Please connect your wallet');
+    // In demo mode, don't try to place real bets - let the page handle it
+    const isDemoMode = checkDemoMode();
+    if (isDemoMode || !isContractDeployed) {
+      // Demo mode is handled by the page component
       return null;
     }
 
-    if (!SUI_CONFIG.games.dice || SUI_CONFIG.games.dice.startsWith('0x_')) {
-      setError('Dice contract not deployed yet');
+    if (!account) {
+      setError('Please connect your wallet');
       return null;
     }
 
@@ -86,22 +122,18 @@ export function useDice(account) {
     setError(null);
 
     try {
-      const betAmount = parseSuit(amount);
-
+      const betAmountRaw = parseSuit(amount);
       const tx = new Transaction();
+      const [betCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(betAmountRaw)]);
 
-      // Split coins for bet amount
-      const [betCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(betAmount)]);
-
-      // Call the play function
       tx.moveCall({
-        target: `${SUI_CONFIG.packageId}::${MODULES.dice}::play`,
+        target: `${SUI_CONFIG.packageIds?.dice || SUI_CONFIG.packageId}::${MODULES.dice}::play`,
         arguments: [
-          tx.object(SUI_CONFIG.games.dice), // house
-          betCoin,                           // bet_coin
-          tx.pure.u8(betType),               // bet_type
-          tx.pure.u8(chosenNumber),          // chosen_number
-          tx.object(RANDOM_OBJECT_ID)        // random
+          tx.object(SUI_CONFIG.games.dice),
+          betCoin,
+          tx.pure.u8(betType),
+          tx.pure.u8(chosenNumber),
+          tx.object(RANDOM_OBJECT_ID)
         ],
         typeArguments: [SUI_CONFIG.suitrumpToken]
       });
@@ -111,11 +143,8 @@ export function useDice(account) {
         options: { showEvents: true }
       });
 
-      // Parse the BetResult event
       if (result.events?.length > 0) {
-        const betEvent = result.events.find(e =>
-          e.type.includes('BetResult')
-        );
+        const betEvent = result.events.find(e => e.type.includes('BetResult'));
         if (betEvent?.parsedJson) {
           const eventData = betEvent.parsedJson;
           setLastResult({
@@ -136,26 +165,23 @@ export function useDice(account) {
       setLoading(false);
       return null;
     }
-  }, [account, signAndExecute, suiClient, fetchStats]);
+  }, [account, signAndExecute, fetchStats, isContractDeployed]);
 
-  // Refresh stats on mount and account change
   useEffect(() => {
     fetchStats();
   }, [fetchStats, account]);
 
   return {
-    // State
     loading,
     error,
     stats,
     limits,
     lastResult,
-
-    // Actions
+    isContractDeployed,
     placeBet,
+    calculatePayout,
     fetchStats,
-
-    // Constants
+    clearError: () => setError(null),
     BetType,
     BetTypeLabels
   };

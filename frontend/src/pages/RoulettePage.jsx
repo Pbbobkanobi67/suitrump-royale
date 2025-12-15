@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import { useDemoContext } from '../contexts/DemoContext';
+import { useGameWallet } from '../hooks/useGameWallet';
+import NeedTickets from '../components/NeedTickets';
+import { CURRENT_NETWORK, getContract } from '../config/sui-config';
+
+// Get roulette contract address (null until deployed)
+const ROULETTE_CONTRACT = getContract('roulette');
 
 // Roulette numbers in wheel order (European single-zero)
 const WHEEL_NUMBERS = [
@@ -34,8 +41,11 @@ const BET_TYPES = {
   COLUMN_3: { name: 'Col 3', payout: 2, description: '3,6,9,12...' },
 };
 
-function RoulettePage({ wallet }) {
-  const { isDemoMode, demoBalance, setDemoBalance } = useDemoContext();
+function RoulettePage() {
+  const gameWallet = useGameWallet();
+  const { isDemoMode, demoBalance, setDemoBalance, realTickets, setRealTickets } = useDemoContext();
+  const account = useCurrentAccount();
+  const isWalletConnected = !!account;
   const [selectedBets, setSelectedBets] = useState([]);
   const [betAmount, setBetAmount] = useState('10');
   const [spinning, setSpinning] = useState(false);
@@ -44,8 +54,12 @@ function RoulettePage({ wallet }) {
   const [wheelRotation, setWheelRotation] = useState(0);
   const wheelRef = useRef(null);
 
-  const isConnected = wallet?.account && wallet?.isCorrectNetwork;
-  const canPlay = isDemoMode || isConnected;
+  // Current balance based on mode
+  const currentBalance = isDemoMode ? demoBalance : realTickets;
+  const canPlay = isDemoMode || isWalletConnected;
+
+  // Check if user needs tickets
+  const needsTickets = currentBalance <= 0;
 
   // Check if a bet wins
   const checkBetWin = (bet, resultNumber) => {
@@ -88,8 +102,8 @@ function RoulettePage({ wallet }) {
     const amount = parseFloat(betAmount);
     if (isNaN(amount) || amount <= 0) return;
 
-    if (isDemoMode && amount > demoBalance) {
-      alert('Insufficient demo balance!');
+    if (amount > currentBalance) {
+      alert(isDemoMode ? 'Insufficient demo balance!' : 'Insufficient ticket balance! Buy tickets at the Cashier.');
       return;
     }
 
@@ -128,12 +142,24 @@ function RoulettePage({ wallet }) {
 
     const totalBet = getTotalBet();
 
+    // Check balance and deduct based on mode
     if (isDemoMode) {
       if (totalBet > demoBalance) {
         alert('Insufficient demo balance!');
         return;
       }
       setDemoBalance(prev => prev - totalBet);
+    } else {
+      // Real mode
+      if (!isWalletConnected) {
+        alert('Please connect your wallet to play');
+        return;
+      }
+      if (totalBet > realTickets) {
+        alert('Insufficient ticket balance! Buy tickets at the Cashier.');
+        return;
+      }
+      setRealTickets(prev => prev - totalBet);
     }
 
     setSpinning(true);
@@ -157,8 +183,13 @@ function RoulettePage({ wallet }) {
       return { ...bet, won, payout };
     });
 
-    if (isDemoMode && totalWinnings > 0) {
-      setDemoBalance(prev => prev + totalWinnings);
+    // Credit winnings based on mode
+    if (totalWinnings > 0) {
+      if (isDemoMode) {
+        setDemoBalance(prev => prev + totalWinnings);
+      } else {
+        setRealTickets(prev => prev + totalWinnings);
+      }
     }
 
     setResult({
@@ -194,22 +225,40 @@ function RoulettePage({ wallet }) {
 
   return (
     <div className="roulette-page">
+      {/* Need Tickets Overlay */}
+      {needsTickets && <NeedTickets gameName="SUITRUMP Roulette" isWalletConnected={isWalletConnected} />}
+
       {/* Demo Mode Banner */}
       {isDemoMode && (
         <div className="demo-mode-banner">
           <span className="demo-icon">🎮</span>
           <span className="demo-text">
-            <strong>FREE PLAY MODE</strong> - Demo Balance: {demoBalance.toLocaleString()} SUIT
+            <strong>FREE PLAY MODE</strong> - Demo Balance: {demoBalance.toLocaleString()} tickets
           </span>
         </div>
       )}
 
-      {/* Connect Wallet Banner */}
-      {!isDemoMode && !isConnected && (
-        <div className="connect-banner">
-          <button className="btn btn-connect-banner" onClick={wallet?.connect}>
-            Connect your wallet to play Roulette
-          </button>
+      {/* Real Mode - Not Connected Banner */}
+      {!isDemoMode && !isWalletConnected && (
+        <div className="connect-wallet-banner">
+          <span className="wallet-icon">🔗</span>
+          <span className="wallet-text">
+            <strong>TESTNET MODE</strong> - Connect your Sui wallet to play with test tokens
+          </span>
+          <ConnectButton />
+        </div>
+      )}
+
+      {/* Real Mode - Connected Banner */}
+      {!isDemoMode && isWalletConnected && (
+        <div className="testnet-mode-banner">
+          <span className="testnet-icon">🧪</span>
+          <span className="testnet-text">
+            <strong>TESTNET MODE</strong> - Playing with TEST_SUITRUMP on {CURRENT_NETWORK}
+          </span>
+          <span className="wallet-address">
+            {account?.address?.slice(0, 6)}...{account?.address?.slice(-4)}
+          </span>
         </div>
       )}
 
@@ -266,7 +315,7 @@ function RoulettePage({ wallet }) {
                 <div className="result-title">{result.netProfit > 0 ? '🎉 Winner!' : 'No luck'}</div>
                 <div className={`result-number-large ${result.color}`}>{result.number}</div>
                 {result.netProfit > 0 && (
-                  <div className="result-winnings">+{result.totalWinnings.toFixed(0)} SUIT</div>
+                  <div className="result-winnings">+{result.totalWinnings.toFixed(0)} tickets</div>
                 )}
               </div>
             ) : (
@@ -299,8 +348,8 @@ function RoulettePage({ wallet }) {
         {/* Controls Bar */}
         <div className="betting-controls">
           <div className="balance-display">
-            <span className="balance-label">Balance</span>
-            <span className="balance-value">{isDemoMode ? demoBalance.toLocaleString() : (wallet?.blueBalance || 0).toLocaleString()} SUIT</span>
+            <span className="balance-label">{isDemoMode ? 'Demo Balance' : 'Ticket Balance'}</span>
+            <span className="balance-value" style={isDemoMode ? { color: '#c4b5fd' } : {}}>{currentBalance.toLocaleString()} tickets</span>
           </div>
 
           <div className="chip-selector">
@@ -322,7 +371,7 @@ function RoulettePage({ wallet }) {
             onClick={spin}
             disabled={spinning || selectedBets.length === 0 || !canPlay}
           >
-            {spinning ? 'Spinning...' : `SPIN (${getTotalBet()} SUIT)`}
+            {spinning ? 'Spinning...' : `SPIN (${getTotalBet()} tickets = $${(getTotalBet() * 0.10).toFixed(2)})`}
           </button>
         </div>
 

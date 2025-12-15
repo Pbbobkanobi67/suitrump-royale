@@ -86,6 +86,15 @@ function BetControls({
       <h3>Place Your Bet</h3>
 
       <form onSubmit={handleSubmit}>
+        {/* Submit Button - at top for visibility */}
+        <button
+          type="submit"
+          className="btn btn-primary btn-large place-bet-top"
+          disabled={disabled || loading || !betAmount || parseFloat(betAmount) < parseFloat(limits?.minBet || 0)}
+        >
+          {loading ? 'Processing...' : 'Place Bet'}
+        </button>
+
         {/* Bet Type Selection */}
         <div className="bet-type-section">
           <label>Bet Type</label>
@@ -135,20 +144,20 @@ function BetControls({
 
         {/* Bet Amount */}
         <div className="amount-section">
-          <label>Bet Amount (SUIT)</label>
+          <label>Bet Amount (Tickets) {betAmount && parseFloat(betAmount) > 0 && <span className="usd-value">= ${(parseFloat(betAmount) * 0.10).toFixed(2)} USD</span>}</label>
           <div className="amount-input-wrapper">
             <input
               type="number"
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
-              placeholder={`Min: ${limits?.minBet || '5'}`}
-              min={limits?.minBet || '5'}
-              max={limits?.maxBet || '500'}
+              placeholder={`Min: ${limits?.minBet || '1'}`}
+              min={limits?.minBet || '1'}
+              max={limits?.maxBet || '10000'}
               step="1"
               disabled={disabled}
             />
             <div className="quick-amounts">
-              {[1, 5, 10, 20, 25, 50, 100].map(amount => (
+              {[1, 5, 10, 25, 50, 100, 500].map(amount => (
                 <button
                   key={amount}
                   type="button"
@@ -163,7 +172,7 @@ function BetControls({
           </div>
           {limits && (
             <span className="limit-info">
-              Min: {limits.minBet} | Max: {limits.maxBet} SUIT
+              Min: {limits.minBet} | Max: {limits.maxBet} tickets (1 ticket = $0.10)
             </span>
           )}
         </div>
@@ -180,18 +189,11 @@ function BetControls({
           </div>
           <div className="info-row highlight">
             <span>Potential Payout:</span>
-            <span className="payout">{parseFloat(potentialPayout).toFixed(2)} SUIT</span>
+            <span className="payout">{parseFloat(potentialPayout).toFixed(0)} tickets</span>
           </div>
         </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          className="btn btn-primary btn-large"
-          disabled={disabled || loading || !betAmount || parseFloat(betAmount) < parseFloat(limits?.minBet || 0)}
-        >
-          {loading ? 'Processing...' : 'Place Bet'}
-        </button>
+        
       </form>
     </div>
   );

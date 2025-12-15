@@ -1,22 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-// TODO: Replace ethers with Sui SDK
+import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import { useDemoContext } from '../contexts/DemoContext';
+import { useGameWallet } from '../hooks/useGameWallet';
+import NeedTickets from '../components/NeedTickets';
+import { CURRENT_NETWORK, getContract } from '../config/sui-config';
 
-// Hardcoded config to avoid import issues
-const SLOTS_ADDRESS = "0xD7eC02f33B02DE7b4a0ab835a2F0284C9a6FC0Ef";
-const SUIT_TOKEN = "0xf11Af396703E11D48780B5154E52Fd7b430C6C01";
-
-const SLOTS_ABI = [
-  "function spin(uint256 betAmount) returns (uint256 spinId)",
-  "function reveal(uint256 spinId) returns (uint256 winAmount)",
-  "function getPendingSpin(address player) view returns (uint256)",
-  "function blocksUntilReveal(uint256 spinId) view returns (uint256)",
-  "function houseReserve() view returns (uint256)",
-  "function jackpotPool() view returns (uint256)",
-  "function getPlayerStats(address player) view returns (tuple(uint256 totalSpins, uint256 totalWagered, uint256 totalWon, uint256 biggestWin, uint256 freeSpinsUsed))",
-  "event SpinStarted(uint256 indexed spinId, address indexed player, uint256 betAmount, bool isFreeSpin)",
-  "event SpinRevealed(uint256 indexed spinId, address indexed player, uint8[3] symbols, uint8[3] symbolTypes, uint256 winAmount)"
-];
+// Get slots contract address (null until deployed)
+const SLOTS_CONTRACT = getContract('slots');
 
 const SYMBOLS = {
   0: { name: 'SUIT', emoji: '🔵', color: '#3B82F6' },
@@ -27,7 +17,7 @@ const SYMBOLS = {
   5: { name: 'SEVEN', emoji: '🎰', color: '#EC4899' }
 };
 
-const BET_PRESETS = [1, 5, 10, 25, 50, 100];
+const BET_PRESETS = [1, 5, 10, 25, 50, 100, 500];
 
 // Slot symbol weights for demo mode (realistic distribution)
 const SYMBOL_WEIGHTS = [
@@ -66,10 +56,13 @@ const calculateSlotPayout = (symbols, betAmount) => {
   return 0;
 };
 
-function SlotsPage({ wallet }) {
+function SlotsPage() {
+  // Use unified game wallet hook
+  const gameWallet = useGameWallet();
   const { isDemoMode, demoBalance, setDemoBalance } = useDemoContext();
+  const account = useCurrentAccount();
+
   const [betAmount, setBetAmount] = useState(10);
-  const [balance, setBalance] = useState('0');
   const [reels, setReels] = useState([3, 3, 3]); // Start with stars
   const [isSpinning, setIsSpinning] = useState(false);
   const [pendingSpinId, setPendingSpinId] = useState(null);
@@ -82,6 +75,11 @@ function SlotsPage({ wallet }) {
   const [stats, setStats] = useState({ totalSpins: 0, totalWagered: '0', totalWon: '0', biggestWin: '0' });
   const [showResult, setShowResult] = useState(null); // { type: 'win'|'loss'|'jackpot', amount: number, symbols: [] }
   const [demoStats, setDemoStats] = useState({ totalSpins: 0, totalWagered: 0, totalWon: 0, biggestWin: 0 });
+  const [history, setHistory] = useState([]);
+
+  // Get current balance based on mode
+  const currentBalance = isDemoMode ? demoBalance : gameWallet.balance.tickets;
+  const isWalletConnected = !!account;
 
   // Ref to track spinning interval (defined early so it's available in all effects)
   const spinIntervalRef = React.useRef(null);
@@ -124,86 +122,21 @@ function SlotsPage({ wallet }) {
     };
   }, []);
 
-  // Fetch contract data
+  // Fetch contract data when in real mode
   useEffect(() => {
-    if (!wallet?.account || !wallet?.signer) return;
+    if (isDemoMode || !isWalletConnected || !SLOTS_CONTRACT) return;
+    // TODO: Fetch house reserve, jackpot pool from contract when deployed
+    // For now, just refetch token balance
+    gameWallet.refetchBalances();
+  }, [isDemoMode, isWalletConnected]);
 
-    const fetchData = async () => {
-      try {
-        // Get SUIT balance
-        const blueToken = new ethers.Contract(
-          SUIT_TOKEN,
-          ["function balanceOf(address) view returns (uint256)"],
-          wallet.signer
-        );
-        const bal = await blueToken.balanceOf(wallet.account);
-        setBalance(parseFloat(ethers.formatEther(bal)).toLocaleString());
-
-        // Get slots contract data
-        const slots = new ethers.Contract(SLOTS_ADDRESS, SLOTS_ABI, wallet.signer);
-
-        const [reserve, jackpot, pendingId, playerStats] = await Promise.all([
-          slots.houseReserve(),
-          slots.jackpotPool(),
-          slots.getPendingSpin(wallet.account),
-          slots.getPlayerStats(wallet.account)
-        ]);
-
-        setHouseReserve(parseFloat(ethers.formatEther(reserve)).toLocaleString());
-        setJackpotPool(parseFloat(ethers.formatEther(jackpot)).toLocaleString());
-        const hasPending = pendingId > 0n;
-        setPendingSpinId(hasPending ? Number(pendingId) : null);
-        // Start spinning if there's a pending spin
-        if (hasPending) {
-          setIsSpinning(true);
-          startSpinning();
-        }
-        setStats({
-          totalSpins: Number(playerStats.totalSpins),
-          totalWagered: parseFloat(ethers.formatEther(playerStats.totalWagered)).toFixed(2),
-          totalWon: parseFloat(ethers.formatEther(playerStats.totalWon)).toFixed(2),
-          biggestWin: parseFloat(ethers.formatEther(playerStats.biggestWin)).toFixed(2)
-        });
-      } catch (err) {
-        console.error('Fetch error:', err);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
-  }, [wallet?.signer, wallet?.account]);
-
-  // Check blocks for pending spin and auto-reveal when ready
+  // Check blocks for pending spin
   const [autoRevealing, setAutoRevealing] = useState(false);
 
   useEffect(() => {
-    if (!pendingSpinId || !wallet?.signer) return;
-
-    const checkBlocks = async () => {
-      try {
-        const slots = new ethers.Contract(SLOTS_ADDRESS, SLOTS_ABI, wallet.signer);
-        const blocks = await slots.blocksUntilReveal(pendingSpinId);
-        const blocksNum = Number(blocks);
-        setBlocksRemaining(blocksNum);
-
-        // Auto-reveal when blocks reach 0
-        if (blocksNum === 0 && !autoRevealing) {
-          setAutoRevealing(true);
-          // Small delay to let UI update
-          setTimeout(() => {
-            handleReveal();
-          }, 500);
-        }
-      } catch (err) {
-        console.error('Block check error:', err);
-      }
-    };
-
-    checkBlocks();
-    const interval = setInterval(checkBlocks, 2000);
-    return () => clearInterval(interval);
-  }, [pendingSpinId, wallet?.signer, autoRevealing]);
+    if (!pendingSpinId || isDemoMode) return;
+    // TODO: Implement block checking when contract is deployed
+  }, [pendingSpinId, isDemoMode, autoRevealing]);
 
   // Reset autoRevealing when pendingSpinId changes
   useEffect(() => {
@@ -212,149 +145,80 @@ function SlotsPage({ wallet }) {
     }
   }, [pendingSpinId]);
 
+  // Real mode spin handler
   const handleSpin = async () => {
-    if (!wallet?.signer) {
-      setError('Please connect your wallet');
+    if (!isWalletConnected) {
+      setError('Please connect your wallet to play');
       return;
     }
 
-    try {
-      setError(null);
-      setLastWin(null);
-      setIsSpinning(true);
+    if (!gameWallet.canAfford(betAmount)) {
+      setError('Insufficient ticket balance! Buy tickets at the Cashier.');
+      return;
+    }
 
-      const slots = new ethers.Contract(SLOTS_ADDRESS, SLOTS_ABI, wallet.signer);
-      const betWei = ethers.parseEther(betAmount.toString());
+    setError(null);
+    setLastWin(null);
+    setIsSpinning(true);
 
-      // Approve tokens
-      const blueToken = new ethers.Contract(
-        SUIT_TOKEN,
-        ["function approve(address,uint256) returns (bool)"],
-        wallet.signer
-      );
-      const approveTx = await blueToken.approve(SLOTS_ADDRESS, betWei);
-      await approveTx.wait();
+    // Start spinning animation
+    startSpinning();
 
-      // Start spinning animation immediately when user signs
-      startSpinning();
+    // Simulate delay for realism
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Spin
-      const spinTx = await slots.spin(betWei);
-      const receipt = await spinTx.wait();
+    // Generate random symbols
+    const finalSymbols = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
+    const winAmount = calculateSlotPayout(finalSymbols, betAmount);
 
-      // Find SpinStarted event - ethers v6 format
-      let foundSpinId = null;
-      for (const log of receipt.logs) {
-        try {
-          const parsed = slots.interface.parseLog({ topics: log.topics, data: log.data });
-          if (parsed?.name === 'SpinStarted') {
-            foundSpinId = Number(parsed.args.spinId);
-            console.log('Spin started! ID:', foundSpinId);
-            break;
-          }
-        } catch (e) {
-          // Not our event, skip
-        }
-      }
+    // Use placeRealBet to handle ticket deduction and winnings
+    const result = gameWallet.placeRealBet('slots', betAmount, () => ({
+      won: winAmount > 0,
+      winAmount: winAmount,
+      symbols: finalSymbols
+    }));
 
-      // Fallback: check contract for pending spin if event parsing failed
-      if (!foundSpinId) {
-        const pendingId = await slots.getPendingSpin(wallet.account);
-        if (pendingId > 0n) {
-          foundSpinId = Number(pendingId);
-          console.log('Found pending spin from contract:', foundSpinId);
-        }
-      }
-
-      if (foundSpinId) {
-        setPendingSpinId(foundSpinId);
-        setBlocksRemaining(1);
-        // Keep spinning - don't stop until reveal
-      }
-
-      // Don't set isSpinning to false - keep it true until reveal completes
-    } catch (err) {
-      console.error('Spin error:', err);
-      setError(err.reason || err.message || 'Spin failed');
+    if (!result.success) {
+      setError(result.error);
       setIsSpinning(false);
-      // Stop spinning on error
       if (spinIntervalRef.current) {
         clearInterval(spinIntervalRef.current);
         spinIntervalRef.current = null;
       }
       setAnimatingReels([false, false, false]);
+      return;
     }
+
+    // Stop spinning with dramatic effect
+    await stopSpinning(finalSymbols);
+
+    // Update UI
+    if (winAmount > 0) {
+      setLastWin(winAmount);
+      setHistory(prev => [{
+        time: new Date().toLocaleTimeString(),
+        result: finalSymbols.join(''),
+        amount: betAmount,
+        win: winAmount,
+        won: true
+      }, ...prev.slice(0, 9)]);
+    } else {
+      setHistory(prev => [{
+        time: new Date().toLocaleTimeString(),
+        result: finalSymbols.join(''),
+        amount: betAmount,
+        win: 0,
+        won: false
+      }, ...prev.slice(0, 9)]);
+    }
+
+    setIsSpinning(false);
   };
 
   const handleReveal = async () => {
-    if (!pendingSpinId || !wallet?.signer) return;
-
-    try {
-      setError(null);
-      // Keep spinning if not already (in case of page reload with pending spin)
-      if (!spinIntervalRef.current) {
-        startSpinning();
-      }
-
-      const slots = new ethers.Contract(SLOTS_ADDRESS, SLOTS_ABI, wallet.signer);
-      const revealTx = await slots.reveal(pendingSpinId);
-      const receipt = await revealTx.wait();
-
-      // Find SpinRevealed event - ethers v6 format
-      let finalSymbols = [3, 3, 3]; // Default to stars
-      let winAmountNum = 0;
-
-      for (const log of receipt.logs) {
-        try {
-          const parsed = slots.interface.parseLog({ topics: log.topics, data: log.data });
-          if (parsed?.name === 'SpinRevealed') {
-            // Use symbolTypes (0-5) not symbols (0-19 positions)
-            finalSymbols = parsed.args.symbolTypes.map(s => Number(s));
-            const winAmount = parsed.args.winAmount;
-            winAmountNum = parseFloat(ethers.formatEther(winAmount));
-            console.log('Spin revealed! Symbol types:', finalSymbols, 'Win:', winAmountNum);
-            break;
-          }
-        } catch (e) {
-          // Not our event, skip
-        }
-      }
-
-      // Stop spinning with dramatic reel-by-reel stop
-      await stopSpinning(finalSymbols);
-
-      // Determine result type and show notification
-      const isJackpot = finalSymbols[0] === 0 && finalSymbols[1] === 0 && finalSymbols[2] === 0; // Triple SUIT
-      if (winAmountNum > 0) {
-        setLastWin(winAmountNum);
-        setShowResult({
-          type: isJackpot ? 'jackpot' : 'win',
-          amount: winAmountNum,
-          symbols: finalSymbols
-        });
-      } else {
-        setLastWin(null);
-        setShowResult({
-          type: 'loss',
-          amount: betAmount,
-          symbols: finalSymbols
-        });
-      }
-
-      setPendingSpinId(null);
-      setBlocksRemaining(0);
-      setIsSpinning(false);
-    } catch (err) {
-      console.error('Reveal error:', err);
-      setError(err.reason || err.message || 'Reveal failed');
-      setIsSpinning(false);
-      // Stop spinning on error
-      if (spinIntervalRef.current) {
-        clearInterval(spinIntervalRef.current);
-        spinIntervalRef.current = null;
-      }
-      setAnimatingReels([false, false, false]);
-    }
+    if (!pendingSpinId || isDemoMode) return;
+    // TODO: Implement reveal when contract is deployed
+    setError('Contract integration coming soon');
   };
 
   // Demo mode spin handler
@@ -421,7 +285,7 @@ function SlotsPage({ wallet }) {
     if (isSpinning) return 'Spinning...';
     if (!isDemoMode && pendingSpinId && blocksRemaining > 0) return `Wait ${blocksRemaining} blocks...`;
     if (!isDemoMode && pendingSpinId && blocksRemaining === 0) return 'REVEAL RESULT';
-    return `SPIN - ${betAmount} SUIT`;
+    return `SPIN - ${betAmount} tickets`;
   };
 
   const handleClick = () => {
@@ -438,14 +302,44 @@ function SlotsPage({ wallet }) {
 
   const dismissResult = () => setShowResult(null);
 
+  // Check if user needs tickets (either mode)
+  const needsTickets = currentBalance <= 0;
+
   return (
     <div className="slots-page">
+      {/* Need Tickets Overlay */}
+      {needsTickets && <NeedTickets gameName="SUITRUMP Slots" isWalletConnected={isWalletConnected} />}
+
       {/* Demo Mode Banner */}
       {isDemoMode && (
         <div className="demo-mode-banner">
           <span className="demo-icon">🎮</span>
           <span className="demo-text">
-            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} demo SUIT tokens. No wallet needed!
+            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} tickets. No wallet needed!
+          </span>
+        </div>
+      )}
+
+      {/* Real Mode - Not Connected Banner */}
+      {!isDemoMode && !isWalletConnected && (
+        <div className="connect-wallet-banner">
+          <span className="wallet-icon">🔗</span>
+          <span className="wallet-text">
+            <strong>TESTNET MODE</strong> - Connect your Sui wallet to play with test tokens
+          </span>
+          <ConnectButton />
+        </div>
+      )}
+
+      {/* Real Mode - Connected Banner */}
+      {!isDemoMode && isWalletConnected && (
+        <div className="testnet-mode-banner">
+          <span className="testnet-icon">🧪</span>
+          <span className="testnet-text">
+            <strong>TESTNET MODE</strong> - Playing with TEST_SUITRUMP on {CURRENT_NETWORK}
+          </span>
+          <span className="wallet-address">
+            {account?.address?.slice(0, 6)}...{account?.address?.slice(-4)}
           </span>
         </div>
       )}
@@ -462,7 +356,7 @@ function SlotsPage({ wallet }) {
                     <span key={i} className="result-symbol jackpot-symbol">{SYMBOLS[s]?.emoji}</span>
                   ))}
                 </div>
-                <div className="result-amount jackpot-amount">+{showResult.amount.toLocaleString()} SUIT</div>
+                <div className="result-amount jackpot-amount">+{showResult.amount.toLocaleString()} tickets</div>
                 <div className="result-subtitle">{isDemoMode ? 'Demo jackpot!' : 'You hit the progressive jackpot!'}</div>
               </>
             )}
@@ -474,7 +368,7 @@ function SlotsPage({ wallet }) {
                     <span key={i} className="result-symbol">{SYMBOLS[s]?.emoji}</span>
                   ))}
                 </div>
-                <div className="result-amount win-amount">+{showResult.amount.toLocaleString()} SUIT</div>
+                <div className="result-amount win-amount">+{showResult.amount.toLocaleString()} tickets</div>
               </>
             )}
             {showResult.type === 'loss' && (
@@ -485,7 +379,7 @@ function SlotsPage({ wallet }) {
                     <span key={i} className="result-symbol">{SYMBOLS[s]?.emoji}</span>
                   ))}
                 </div>
-                <div className="result-amount loss-amount">-{showResult.amount} SUIT</div>
+                <div className="result-amount loss-amount">-{showResult.amount} tickets</div>
                 <div className="result-subtitle">Better luck next spin!</div>
               </>
             )}
@@ -505,9 +399,11 @@ function SlotsPage({ wallet }) {
           </div>
         </div>
         <div className="slots-balance">
-          <span className="balance-label">{isDemoMode ? 'Demo Balance' : 'Balance'}</span>
+          <span className="balance-label">
+            {isDemoMode ? 'Demo Balance' : 'Ticket Balance'}
+          </span>
           <span className="balance-value" style={isDemoMode ? { color: '#c4b5fd' } : {}}>
-            {isDemoMode ? demoBalance.toLocaleString() : balance} SUIT
+            {gameWallet.isLoadingBalance ? '...' : currentBalance.toLocaleString()} tickets
           </span>
         </div>
       </div>
@@ -516,11 +412,11 @@ function SlotsPage({ wallet }) {
         <div className="contract-stats">
           <div className="stat-box">
             <span className="stat-label">House Reserve</span>
-            <span className="stat-value">{houseReserve} SUIT</span>
+            <span className="stat-value">{houseReserve} tickets</span>
           </div>
           <div className="stat-box jackpot">
             <span className="stat-label">Jackpot Pool</span>
-            <span className="stat-value">{jackpotPool} SUIT</span>
+            <span className="stat-value">{jackpotPool} tickets</span>
             <span className="jackpot-hint">🔵🔵🔵 TO WIN</span>
           </div>
         </div>
@@ -546,11 +442,11 @@ function SlotsPage({ wallet }) {
           {isSpinning ? 'Spinning...' :
            pendingSpinId && blocksRemaining > 0 ? `Waiting ${blocksRemaining} blocks...` :
            pendingSpinId ? 'Click REVEAL!' :
-           lastWin > 0 ? `Winner! +${lastWin} SUIT` : 'Spin to play!'}
+           lastWin > 0 ? `Winner! +${lastWin} tickets` : 'Spin to play!'}
         </div>
 
         <div className="bet-section">
-          <h3>Select Bet</h3>
+          <h3>Select Bet <span className="usd-hint">({betAmount} tickets = ${(betAmount * 0.10).toFixed(2)} USD)</span></h3>
           <div className="bet-presets">
             {BET_PRESETS.map(preset => (
               <button
@@ -594,25 +490,83 @@ function SlotsPage({ wallet }) {
           <h3>{isDemoMode ? 'Demo Stats' : 'Your Stats'}</h3>
           <div className="stats-list">
             <div className="stat-row"><span>Total Spins</span><span>{isDemoMode ? demoStats.totalSpins : stats.totalSpins}</span></div>
-            <div className="stat-row"><span>Total Wagered</span><span>{isDemoMode ? demoStats.totalWagered.toFixed(2) : stats.totalWagered} SUIT</span></div>
-            <div className="stat-row"><span>Total Won</span><span>{isDemoMode ? demoStats.totalWon.toFixed(2) : stats.totalWon} SUIT</span></div>
-            <div className="stat-row highlight"><span>Biggest Win</span><span>{isDemoMode ? demoStats.biggestWin.toFixed(2) : stats.biggestWin} SUIT</span></div>
+            <div className="stat-row"><span>Total Wagered</span><span>{isDemoMode ? demoStats.totalWagered.toFixed(2) : stats.totalWagered} tickets</span></div>
+            <div className="stat-row"><span>Total Won</span><span>{isDemoMode ? demoStats.totalWon.toFixed(2) : stats.totalWon} tickets</span></div>
+            <div className="stat-row highlight"><span>Biggest Win</span><span>{isDemoMode ? demoStats.biggestWin.toFixed(2) : stats.biggestWin} tickets</span></div>
           </div>
         </div>
 
         <div className="info-panel">
-          <h3>With {betAmount} SUIT Bet</h3>
+          <h3>With {betAmount} ticket bet</h3>
           <div className="potential-list">
-            <div className="potential-row jackpot"><span>🔵🔵🔵 Jackpot</span><span>{betAmount * 50} SUIT</span></div>
-            <div className="potential-row"><span>💎💎💎 Diamond</span><span>{betAmount * 25} SUIT</span></div>
-            <div className="potential-row"><span>🎰🎰🎰 Seven</span><span>{betAmount * 15} SUIT</span></div>
-            <div className="potential-row"><span>2-Match</span><span>{betAmount * 1.5} SUIT</span></div>
+            <div className="potential-row jackpot"><span>🔵🔵🔵 Jackpot</span><span>{betAmount * 50} tickets</span></div>
+            <div className="potential-row"><span>💎💎💎 Diamond</span><span>{betAmount * 25} tickets</span></div>
+            <div className="potential-row"><span>🎰🎰🎰 Seven</span><span>{betAmount * 15} tickets</span></div>
+            <div className="potential-row"><span>2-Match</span><span>{betAmount * 1.5} tickets</span></div>
           </div>
         </div>
       </div>
 
       <style>{`
         .slots-page { width: 100%; }
+
+        /* Mode Banners */
+        .connect-wallet-banner, .testnet-mode-banner {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 20px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+        }
+        .connect-wallet-banner {
+          background: linear-gradient(135deg, #1e3a5f, #0f172a);
+          border: 2px solid #3b82f6;
+        }
+        .testnet-mode-banner {
+          background: linear-gradient(135deg, #3d1f5c, #1e1b4b);
+          border: 2px solid #8b5cf6;
+        }
+        .wallet-icon, .testnet-icon { font-size: 1.5rem; }
+        .wallet-text, .testnet-text { flex: 1; color: #e2e8f0; font-size: 0.9rem; }
+        .wallet-address {
+          background: rgba(139, 92, 246, 0.2);
+          padding: 6px 12px;
+          border-radius: 8px;
+          color: #a78bfa;
+          font-family: monospace;
+          font-size: 0.85rem;
+        }
+        .connect-btn {
+          padding: 8px 20px;
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .connect-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Style the dapp-kit ConnectButton to be blue */
+        .connect-wallet-banner [data-dapp-kit],
+        .connect-wallet-banner button {
+          background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+          border: none !important;
+          color: white !important;
+          font-weight: 600 !important;
+          border-radius: 8px !important;
+          padding: 8px 20px !important;
+        }
+        .connect-wallet-banner [data-dapp-kit]:hover,
+        .connect-wallet-banner button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
         .slots-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 16px; margin-bottom: 20px; border: 2px solid #2563eb; }
         .slots-title { display: flex; align-items: center; gap: 12px; }
         .slots-icon { font-size: 2.5rem; }

@@ -1,26 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// TODO: Replace ethers with Sui SDK
+import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import { useDemoContext } from '../contexts/DemoContext';
+import NeedTickets from '../components/NeedTickets';
+import { CURRENT_NETWORK, getContract } from '../config/sui-config';
 
-// Contract addresses - Sui Testnet
-const CRASH_ADDRESS = "0x10A3c6073CCE7284C19Cc0128BD4872585BEB821";
-const SUIT_TOKEN = "0xf11Af396703E11D48780B5154E52Fd7b430C6C01";
-
-const CRASH_ABI = [
-  "function startGame(uint256 betAmount) returns (uint256 gameId)",
-  "function cashOut(uint256 gameId)",
-  "function getCurrentMultiplier(uint256 gameId) view returns (uint256)",
-  "function blocksUntilReveal(uint256 gameId) view returns (uint256)",
-  "function getPlayerActiveGame(address player) view returns (uint256)",
-  "function houseReserve() view returns (uint256)",
-  "function minBet() view returns (uint256)",
-  "function maxBet() view returns (uint256)",
-  "function getGame(uint256 gameId) view returns (address player, uint256 betAmount, uint256 startBlock, uint256 revealBlock, uint256 crashPoint, uint256 cashOutMultiplier, uint8 state)",
-  "function getStats() view returns (uint256 totalGames, uint256 totalWagered, uint256 totalPaidOut, uint256 houseReserve)",
-  "event GameStarted(uint256 indexed gameId, address indexed player, uint256 betAmount, uint256 revealBlock)",
-  "event CashOut(uint256 indexed gameId, address indexed player, uint256 multiplier, uint256 payout)",
-  "event GameCrashed(uint256 indexed gameId, address indexed player, uint256 crashPoint, uint256 cashOutMultiplier)"
-];
+// Get crash contract address (null until deployed)
+const CRASH_CONTRACT = getContract('crash');
 
 const BET_PRESETS = [1, 5, 10, 25, 50, 100];
 const TARGET_PRESETS = [1.5, 2.0, 3.0, 5.0, 10.0];
@@ -36,9 +21,14 @@ const generateCrashPoint = () => {
   return Math.min(0.96 / (1 - r), 100); // Cap at 100x
 };
 
-function CrashPage({ wallet }) {
-  const { isDemoMode, demoBalance, setDemoBalance } = useDemoContext();
+function CrashPage() {
+  const { isDemoMode, demoBalance, setDemoBalance, realTickets, setRealTickets } = useDemoContext();
+  const account = useCurrentAccount();
+  const isWalletConnected = !!account;
   const [betAmount, setBetAmount] = useState(10);
+
+  // Current balance based on mode
+  const currentBalance = isDemoMode ? demoBalance : realTickets;
   const [balance, setBalance] = useState('0');
   const [activeGameId, setActiveGameId] = useState(null);
   const [gameState, setGameState] = useState('idle'); // idle, waiting, playing, cashed, crashed
@@ -56,6 +46,11 @@ function CrashPage({ wallet }) {
   const [demoCrashPoint, setDemoCrashPoint] = useState(null);
   const demoIntervalRef = useRef(null);
 
+  // Real mode specific (local simulation with real tickets)
+  const [realCrashPoint, setRealCrashPoint] = useState(null);
+  const [realBetAmount, setRealBetAmount] = useState(0);
+  const realIntervalRef = useRef(null);
+
   // Auto cash-out settings
   const [autoMode, setAutoMode] = useState(true);
   const [targetMultiplier, setTargetMultiplier] = useState(2.0);
@@ -64,28 +59,43 @@ function CrashPage({ wallet }) {
   const animationRef = useRef(null);
   const startTimeRef = useRef(null);
   const baseMultiplierRef = useRef(1.0);
+  const gameStateRef = useRef(gameState);
 
-  // Smooth multiplier animation
+  // Keep ref in sync with state
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
+  // Smooth multiplier animation - uses ref to avoid stale closure
   const animateMultiplier = useCallback(() => {
-    if (gameState !== 'playing') return;
+    if (gameStateRef.current !== 'playing') return;
 
     const elapsed = (Date.now() - startTimeRef.current) / 1000;
-    // Simulate smooth growth between blocks (~2 sec per block on Base)
-    const smoothMultiplier = baseMultiplierRef.current + (elapsed * 0.025); // ~0.05x per 2 seconds
+    // Match demo rate: 0.1x per second for smooth animation
+    const smoothMultiplier = baseMultiplierRef.current + (elapsed * 0.1);
 
     setDisplayMultiplier(smoothMultiplier);
     animationRef.current = requestAnimationFrame(animateMultiplier);
-  }, [gameState]);
+  }, []);
 
-  // Start animation when playing
+  // Start animation when playing (REAL MODE ONLY - demo mode uses setInterval)
   useEffect(() => {
+    // Skip animation for demo mode - it has its own setInterval
+    if (isDemoMode) return;
+
     if (gameState === 'playing') {
       startTimeRef.current = Date.now();
       baseMultiplierRef.current = currentMultiplier;
-      animationRef.current = requestAnimationFrame(animateMultiplier);
+      // Start animation loop for real mode
+      const animate = () => {
+        if (gameStateRef.current !== 'playing') return;
+        const elapsed = (Date.now() - startTimeRef.current) / 1000;
+        const smoothMultiplier = baseMultiplierRef.current + (elapsed * 0.1);
+        setDisplayMultiplier(smoothMultiplier);
+        animationRef.current = requestAnimationFrame(animate);
+      };
+      animationRef.current = requestAnimationFrame(animate);
     } else if (gameState === 'idle' || gameState === 'waiting') {
-      // Only cancel animation for idle/waiting states, not cashed/crashed
-      // (those states handle their own animation cleanup)
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
         animationRef.current = null;
@@ -97,234 +107,130 @@ function CrashPage({ wallet }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [gameState, currentMultiplier, animateMultiplier]);
+  }, [gameState, isDemoMode]);
 
   // Fetch balance and contract data
   useEffect(() => {
-    if (!wallet?.account || !wallet?.signer || CRASH_ADDRESS === "0x0000000000000000000000000000000000000000") return;
+    // Contract not deployed yet - skip blockchain fetches
+    if (!CRASH_CONTRACT || !isWalletConnected) return;
 
-    const fetchData = async () => {
-      try {
-        const blueToken = new ethers.Contract(
-          SUIT_TOKEN,
-          ["function balanceOf(address) view returns (uint256)"],
-          wallet.signer
-        );
-        const bal = await blueToken.balanceOf(wallet.account);
-        setBalance(parseFloat(ethers.formatEther(bal)).toLocaleString());
+    // TODO: Implement Sui contract integration when deployed
+    console.log('Crash contract integration pending');
+  }, [isWalletConnected]);
 
-        const crash = new ethers.Contract(CRASH_ADDRESS, CRASH_ABI, wallet.signer);
-        const [reserve, activeId] = await Promise.all([
-          crash.houseReserve(),
-          crash.getPlayerActiveGame(wallet.account)
-        ]);
-
-        setHouseReserve(parseFloat(ethers.formatEther(reserve)).toLocaleString());
-
-        if (activeId > 0n) {
-          setActiveGameId(Number(activeId));
-          const blocks = await crash.blocksUntilReveal(activeId);
-          setBlocksRemaining(Number(blocks));
-
-          if (Number(blocks) === 0) {
-            setGameState('playing');
-            const mult = await crash.getCurrentMultiplier(activeId);
-            setCurrentMultiplier(Number(mult) / MULTIPLIER_PRECISION);
-          } else {
-            setGameState('waiting');
-          }
-        }
-      } catch (err) {
-        console.error('Fetch error:', err);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, [wallet?.signer, wallet?.account]);
-
-  // Poll for game state updates and auto cash-out
+  // Poll for game state updates and auto cash-out (blockchain mode - not yet implemented)
   useEffect(() => {
-    if (!activeGameId || !wallet?.signer || CRASH_ADDRESS === "0x0000000000000000000000000000000000000000") return;
+    // Contract polling disabled until Sui contract is deployed
+    if (!activeGameId || !CRASH_CONTRACT) return;
 
-    const checkGame = async () => {
-      try {
-        const crash = new ethers.Contract(CRASH_ADDRESS, CRASH_ABI, wallet.signer);
-        const blocks = await crash.blocksUntilReveal(activeGameId);
-        setBlocksRemaining(Number(blocks));
+    // TODO: Implement Sui contract polling when deployed
+  }, [activeGameId]);
 
-        if (Number(blocks) === 0 && gameState === 'waiting') {
-          setGameState('playing');
-          startTimeRef.current = Date.now();
-          baseMultiplierRef.current = 1.0;
-        }
-
-        if (gameState === 'playing') {
-          const mult = await crash.getCurrentMultiplier(activeGameId);
-          const newMult = Number(mult) / MULTIPLIER_PRECISION;
-          setCurrentMultiplier(newMult);
-          baseMultiplierRef.current = newMult;
-          startTimeRef.current = Date.now();
-
-          // Auto cash-out when target reached
-          if (autoMode && newMult >= targetMultiplier && !autoCashingOut && !isProcessing) {
-            setAutoCashingOut(true);
-            handleCashOut();
-          }
-        }
-      } catch (err) {
-        console.error('Game check error:', err);
-      }
-    };
-
-    checkGame();
-    const interval = setInterval(checkGame, 1500); // Faster polling for auto-cashout
-    return () => clearInterval(interval);
-  }, [activeGameId, wallet?.signer, gameState, autoMode, targetMultiplier, autoCashingOut, isProcessing]);
-
-  const handleStartGame = async () => {
-    if (!wallet?.signer) {
+  // Real mode start handler (local simulation with real tickets)
+  const handleStartGame = () => {
+    if (!isWalletConnected) {
       setError('Please connect your wallet first');
       return;
     }
-    if (CRASH_ADDRESS === "0x0000000000000000000000000000000000000000") {
-      setError('Contract not deployed yet');
+
+    if (betAmount > realTickets) {
+      setError('Insufficient ticket balance! Buy tickets at the Cashier.');
       return;
     }
 
-    try {
-      setError(null);
-      setLastResult(null);
-      setIsProcessing(true);
-      setCrashPoint(null);
+    setError(null);
+    setLastResult(null);
+    setIsProcessing(true);
 
-      const crash = new ethers.Contract(CRASH_ADDRESS, CRASH_ABI, wallet.signer);
-      const betWei = ethers.parseEther(betAmount.toString());
+    // Deduct bet from real tickets
+    setRealTickets(prev => prev - betAmount);
+    setRealBetAmount(betAmount);
 
-      // Approve tokens
-      const blueToken = new ethers.Contract(
-        SUIT_TOKEN,
-        ["function approve(address,uint256) returns (bool)"],
-        wallet.signer
-      );
-      const approveTx = await blueToken.approve(CRASH_ADDRESS, betWei);
-      await approveTx.wait();
+    // Generate crash point
+    const crashPt = generateCrashPoint();
+    setRealCrashPoint(crashPt);
+    setCrashPoint(null);
 
-      // Start game
-      const tx = await crash.startGame(betWei);
-      const receipt = await tx.wait();
+    // Brief waiting state
+    setGameState('waiting');
+    setBlocksRemaining(2);
+    setCurrentMultiplier(1.0);
+    setDisplayMultiplier(1.0);
 
-      // Find GameStarted event
-      for (const log of receipt.logs) {
-        try {
-          const parsed = crash.interface.parseLog({ topics: log.topics, data: log.data });
-          if (parsed?.name === 'GameStarted') {
-            setActiveGameId(Number(parsed.args.gameId));
-            setBlocksRemaining(2);
-            setGameState('waiting');
-            setCurrentMultiplier(1.0);
-            setDisplayMultiplier(1.0);
-            break;
-          }
-        } catch (e) {}
-      }
+    setTimeout(() => {
+      setBlocksRemaining(1);
+      setTimeout(() => {
+        setBlocksRemaining(0);
+        setGameState('playing');
+        startTimeRef.current = Date.now();
+        baseMultiplierRef.current = 1.0;
+        setIsProcessing(false);
 
-      setIsProcessing(false);
-    } catch (err) {
-      console.error('Start game error:', err);
-      setError(err.reason || err.message || 'Failed to start game');
-      setIsProcessing(false);
-    }
-  };
+        // Start real mode multiplier growth
+        realIntervalRef.current = setInterval(() => {
+          const elapsed = (Date.now() - startTimeRef.current) / 1000;
+          const newMult = 1.0 + (elapsed * 0.1); // 0.1x per second
 
-  const handleCashOut = async () => {
-    if (!activeGameId || !wallet?.signer) return;
-
-    try {
-      setError(null);
-      setIsProcessing(true);
-
-      const crash = new ethers.Contract(CRASH_ADDRESS, CRASH_ABI, wallet.signer);
-      const tx = await crash.cashOut(activeGameId);
-      const receipt = await tx.wait();
-
-      // Check for CashOut or GameCrashed event
-      for (const log of receipt.logs) {
-        try {
-          const parsed = crash.interface.parseLog({ topics: log.topics, data: log.data });
-
-          if (parsed?.name === 'CashOut') {
-            const mult = Number(parsed.args.multiplier) / MULTIPLIER_PRECISION;
-            const payout = parseFloat(ethers.formatEther(parsed.args.payout));
-
-            // Stop animation FIRST and set display value immediately
-            if (animationRef.current) {
-              cancelAnimationFrame(animationRef.current);
-              animationRef.current = null;
-            }
-
-            // Set all values in one batch to avoid flicker
-            setDisplayMultiplier(mult);
-            setCurrentMultiplier(mult);
-            setCrashPoint(mult + 0.5); // Crash was higher
-            setLastResult({
-              type: 'win',
-              multiplier: mult,
-              payout: payout,
-              profit: payout - betAmount
-            });
-            setGameState('cashed');
-
-            // Add to history
-            setGameHistory(prev => [{
-              id: activeGameId,
-              multiplier: mult,
-              result: 'win',
-              amount: payout
-            }, ...prev.slice(0, 9)]);
-            break;
-          }
-
-          if (parsed?.name === 'GameCrashed') {
-            const crashMult = Number(parsed.args.crashPoint) / MULTIPLIER_PRECISION;
-            const playerMult = Number(parsed.args.cashOutMultiplier) / MULTIPLIER_PRECISION;
-
+          if (newMult >= crashPt) {
+            // Crashed!
+            clearInterval(realIntervalRef.current);
+            realIntervalRef.current = null;
+            setDisplayMultiplier(crashPt);
+            setCurrentMultiplier(crashPt);
+            setCrashPoint(crashPt);
+            setGameState('crashed');
             setLastResult({
               type: 'crash',
-              multiplier: playerMult,
-              crashPoint: crashMult,
+              multiplier: 0,
+              crashPoint: crashPt,
               loss: betAmount
             });
-            // Stop animation and show crash point
-            if (animationRef.current) {
-              cancelAnimationFrame(animationRef.current);
-              animationRef.current = null;
-            }
-            setDisplayMultiplier(crashMult);
-            setCurrentMultiplier(crashMult);
-            setCrashPoint(crashMult);
-            setGameState('crashed');
-
-            // Add to history
             setGameHistory(prev => [{
-              id: activeGameId,
-              multiplier: crashMult,
+              id: Date.now(),
+              multiplier: crashPt,
               result: 'crash',
               amount: 0
             }, ...prev.slice(0, 9)]);
-            break;
-          }
-        } catch (e) {}
-      }
+          } else {
+            setDisplayMultiplier(newMult);
+            setCurrentMultiplier(newMult);
 
-      setActiveGameId(null);
-      setIsProcessing(false);
-    } catch (err) {
-      console.error('Cash out error:', err);
-      setError(err.reason || err.message || 'Failed to cash out');
-      setIsProcessing(false);
+            // Auto cash-out check
+            if (autoMode && newMult >= targetMultiplier && !autoCashingOut) {
+              handleCashOut(newMult);
+            }
+          }
+        }, 50);
+      }, 1000);
+    }, 1000);
+  };
+
+  // Real mode cash out handler
+  const handleCashOut = (mult = displayMultiplier) => {
+    if (realIntervalRef.current) {
+      clearInterval(realIntervalRef.current);
+      realIntervalRef.current = null;
     }
+
+    const payout = realBetAmount * mult;
+    setRealTickets(prev => prev + payout);
+
+    setDisplayMultiplier(mult);
+    setCurrentMultiplier(mult);
+    setCrashPoint(realCrashPoint);
+    setGameState('cashed');
+    setLastResult({
+      type: 'win',
+      multiplier: mult,
+      payout: payout,
+      profit: payout - realBetAmount
+    });
+    setGameHistory(prev => [{
+      id: Date.now(),
+      multiplier: mult,
+      result: 'win',
+      amount: payout
+    }, ...prev.slice(0, 9)]);
   };
 
   const resetGame = () => {
@@ -336,9 +242,14 @@ function CrashPage({ wallet }) {
     setDisplayMultiplier(1.0);
     setAutoCashingOut(false);
     setDemoCrashPoint(null);
+    setRealCrashPoint(null);
     if (demoIntervalRef.current) {
       clearInterval(demoIntervalRef.current);
       demoIntervalRef.current = null;
+    }
+    if (realIntervalRef.current) {
+      clearInterval(realIntervalRef.current);
+      realIntervalRef.current = null;
     }
   };
 
@@ -463,14 +374,44 @@ function CrashPage({ wallet }) {
     return mult.toFixed(2) + 'x';
   };
 
+  // Check if user needs tickets
+  const needsTickets = currentBalance <= 0;
+
   return (
     <div className="crash-page">
+      {/* Need Tickets Overlay */}
+      {needsTickets && <NeedTickets gameName="SUITRUMP Crash" isWalletConnected={isWalletConnected} />}
+
       {/* Demo Mode Banner */}
       {isDemoMode && (
         <div className="demo-mode-banner">
           <span className="demo-icon">🎮</span>
           <span className="demo-text">
-            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} demo SUIT tokens. No wallet needed!
+            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} tickets. No wallet needed!
+          </span>
+        </div>
+      )}
+
+      {/* Real Mode - Not Connected Banner */}
+      {!isDemoMode && !isWalletConnected && (
+        <div className="connect-wallet-banner">
+          <span className="wallet-icon">🔗</span>
+          <span className="wallet-text">
+            <strong>TESTNET MODE</strong> - Connect your Sui wallet to play with test tokens
+          </span>
+          <ConnectButton />
+        </div>
+      )}
+
+      {/* Real Mode - Connected Banner */}
+      {!isDemoMode && isWalletConnected && (
+        <div className="testnet-mode-banner">
+          <span className="testnet-icon">🧪</span>
+          <span className="testnet-text">
+            <strong>TESTNET MODE</strong> - Playing with TEST_SUITRUMP on {CURRENT_NETWORK}
+          </span>
+          <span className="wallet-address">
+            {account?.address?.slice(0, 6)}...{account?.address?.slice(-4)}
           </span>
         </div>
       )}
@@ -484,9 +425,9 @@ function CrashPage({ wallet }) {
           </div>
         </div>
         <div className="crash-balance">
-          <span className="balance-label">{isDemoMode ? 'Demo Balance' : 'Balance'}</span>
+          <span className="balance-label">{isDemoMode ? 'Demo Balance' : 'Ticket Balance'}</span>
           <span className="balance-value" style={isDemoMode ? { color: '#c4b5fd' } : {}}>
-            {isDemoMode ? demoBalance.toLocaleString() : balance} SUIT
+            {currentBalance.toLocaleString()} tickets
           </span>
         </div>
       </div>
@@ -495,7 +436,7 @@ function CrashPage({ wallet }) {
         <div className="contract-stats">
           <div className="stat-box">
             <span className="stat-label">House Reserve</span>
-            <span className="stat-value">{houseReserve} SUIT</span>
+            <span className="stat-value">{houseReserve} tickets</span>
           </div>
           <div className="stat-box">
             <span className="stat-label">Growth Rate</span>
@@ -505,87 +446,195 @@ function CrashPage({ wallet }) {
       )}
 
       <div className="crash-game">
-        <div className="crash-display">
-          {/* Whale Arc Animation */}
-          <div className="whale-arc-container">
-            <svg viewBox="0 0 400 200" className="arc-svg" preserveAspectRatio="xMidYMid meet">
-              {/* Arc path - curves up based on multiplier */}
-              <path
-                className={`arc-path ${gameState}`}
-                d={`M 20 180 Q ${Math.min(20 + (displayMultiplier - 1) * 40, 350)} ${Math.max(180 - (displayMultiplier - 1) * 30, 20)} ${Math.min(20 + (displayMultiplier - 1) * 50, 380)} ${Math.max(180 - (displayMultiplier - 1) * 35, 10)}`}
-                fill="none"
-                stroke="url(#arcGradient)"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              {/* Gradient definition */}
+        <div className={`crash-display ${gameState}`}>
+          {/* Chart Background with Grid */}
+          <div className="chart-container">
+            <svg viewBox="0 0 500 300" className="chart-svg" preserveAspectRatio="xMidYMid meet">
+              {/* Grid lines */}
               <defs>
-                <linearGradient id="arcGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#3b82f6" />
+                <linearGradient id="trailGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#1e40af" stopOpacity="0.3" />
+                  <stop offset="50%" stopColor="#3b82f6" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#60a5fa" stopOpacity="1" />
                 </linearGradient>
+                <linearGradient id="trailGradientWin" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#166534" stopOpacity="0.3" />
+                  <stop offset="50%" stopColor="#22c55e" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#4ade80" stopOpacity="1" />
+                </linearGradient>
+                <linearGradient id="trailGradientCrash" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#991b1b" stopOpacity="0.3" />
+                  <stop offset="50%" stopColor="#ef4444" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#f87171" stopOpacity="1" />
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+                <filter id="strongGlow">
+                  <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
               </defs>
+
+              {/* Horizontal grid lines */}
+              {[1, 2, 3, 4, 5].map(i => (
+                <g key={`h-${i}`}>
+                  <line
+                    x1="40"
+                    y1={280 - (i * 50)}
+                    x2="490"
+                    y2={280 - (i * 50)}
+                    stroke="rgba(59, 130, 246, 0.15)"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x="25"
+                    y={285 - (i * 50)}
+                    fill="rgba(148, 163, 184, 0.6)"
+                    fontSize="11"
+                    textAnchor="end"
+                  >
+                    {i + 1}x
+                  </text>
+                </g>
+              ))}
+
+              {/* Vertical grid lines */}
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <line
+                  key={`v-${i}`}
+                  x1={40 + (i * 55)}
+                  y1="30"
+                  x2={40 + (i * 55)}
+                  y2="280"
+                  stroke="rgba(59, 130, 246, 0.1)"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {/* Base line */}
+              <line
+                x1="40"
+                y1="280"
+                x2="490"
+                y2="280"
+                stroke="rgba(59, 130, 246, 0.3)"
+                strokeWidth="2"
+              />
+
+              {/* The rocket trail - exponential curve */}
+              <path
+                className={`rocket-trail ${gameState}`}
+                d={(() => {
+                  const progress = Math.min((displayMultiplier - 1) / 5, 1); // 0 to 1 over 6x
+                  const x = 45 + progress * 420;
+                  const y = 275 - Math.pow(progress, 0.7) * 240;
+                  return `M 45 275 Q ${45 + progress * 200} ${275 - progress * 100} ${x} ${Math.max(y, 35)}`;
+                })()}
+                fill="none"
+                stroke={gameState === 'crashed' ? 'url(#trailGradientCrash)' : gameState === 'cashed' ? 'url(#trailGradientWin)' : 'url(#trailGradient)'}
+                strokeWidth="5"
+                strokeLinecap="round"
+                filter={gameState === 'playing' ? 'url(#glow)' : gameState === 'cashed' ? 'url(#strongGlow)' : 'none'}
+              />
+
+              {/* Trail glow effect */}
+              {gameState === 'playing' && (
+                <path
+                  className="rocket-trail-glow"
+                  d={(() => {
+                    const progress = Math.min((displayMultiplier - 1) / 5, 1);
+                    const x = 45 + progress * 420;
+                    const y = 275 - Math.pow(progress, 0.7) * 240;
+                    return `M 45 275 Q ${45 + progress * 200} ${275 - progress * 100} ${x} ${Math.max(y, 35)}`;
+                  })()}
+                  fill="none"
+                  stroke="rgba(96, 165, 250, 0.4)"
+                  strokeWidth="12"
+                  strokeLinecap="round"
+                  filter="url(#glow)"
+                />
+              )}
             </svg>
 
-            {/* Whale at the tip of the arc */}
+            {/* Whale mascot rising vertically on left side */}
             <div
-              className={`whale-rider ${gameState}`}
+              className={`crash-whale ${gameState}`}
               style={{
-                left: `${Math.min(5 + (displayMultiplier - 1) * 12, 90)}%`,
-                bottom: `${Math.min(10 + (displayMultiplier - 1) * 17, 85)}%`
+                left: '35px',
+                bottom: `${5 + Math.min((displayMultiplier - 1) * 20, 80)}%`,
               }}
             >
-              <img src="/suitrump-mascot.png" alt="whale" className="whale-img" />
+              <img src="/suitrump-mascot.png" alt="SUIT" className="whale-mascot" />
+              {gameState === 'playing' && (
+                <div className="whale-flames">
+                  <span>🔥</span>
+                  <span>🔥</span>
+                </div>
+              )}
               {gameState === 'crashed' && (
-                <div className="explosion">
+                <div className="whale-explosion">
                   <span>💥</span>
                   <span>💥</span>
                   <span>💥</span>
                 </div>
               )}
               {gameState === 'cashed' && (
-                <div className="celebration">
-                  <span>🎉</span>
-                  <span>⭐</span>
+                <div className="whale-stars">
                   <span>✨</span>
-                  <span>🎊</span>
+                  <span>⭐</span>
+                  <span>🌟</span>
+                  <span>✨</span>
+                </div>
+              )}
+            </div>
+
+            {/* Multiplier display at bottom */}
+            <div className={`multiplier-bottom ${gameState}`}>
+              <div className="multiplier-number" style={{ color: getMultiplierColor() }}>
+                {formatMultiplier(displayMultiplier)}
+              </div>
+              {gameState === 'waiting' && (
+                <div className="status-text waiting">
+                  <span className="loading-dots">Launching in {blocksRemaining}</span>
+                </div>
+              )}
+              {gameState === 'crashed' && (
+                <div className="status-text crashed">
+                  <span className="crash-label">CRASHED</span>
+                </div>
+              )}
+              {gameState === 'cashed' && lastResult && (
+                <div className="status-text cashed">
+                  <span className="win-label">+{lastResult.profit.toFixed(2)} tickets</span>
                 </div>
               )}
             </div>
           </div>
-
-          <div
-            className={`multiplier-value ${gameState}`}
-            style={{ color: getMultiplierColor() }}
-          >
-            {formatMultiplier(displayMultiplier)}
-          </div>
-
-          {gameState === 'waiting' && (
-            <div className="waiting-message">
-              <span className="waiting-icon">⏳</span>
-              Waiting for {blocksRemaining} block{blocksRemaining !== 1 ? 's' : ''}...
-            </div>
-          )}
-
-          {gameState === 'crashed' && (
-            <div className="crash-message">
-              <span className="crash-banner">CRASHED!</span>
-              <span className="crash-at">@ {formatMultiplier(crashPoint || displayMultiplier)}</span>
-            </div>
-          )}
-
-          {gameState === 'cashed' && lastResult && (
-            <div className="win-message">
-              <span className="win-banner">CASHED OUT!</span>
-              <span className="win-amount">+{lastResult.profit.toFixed(2)} SUIT</span>
-            </div>
-          )}
         </div>
 
         {gameState === 'idle' && (
           <div className="bet-section">
             <h3>Place Your Bet</h3>
+
+            {/* Start Button - At Top */}
+            <button
+              className="action-btn start"
+              onClick={isDemoMode ? handleDemoStart : handleStartGame}
+              disabled={isProcessing || (!isDemoMode && !CRASH_CONTRACT)}
+            >
+              {isProcessing ? 'Starting...' : autoMode
+                ? `🚀 START @ ${targetMultiplier}x - ${betAmount} tickets`
+                : `🚀 START GAME - ${betAmount} tickets`}
+            </button>
+
             <div className="bet-presets">
               {BET_PRESETS.map(preset => (
                 <button
@@ -606,7 +655,8 @@ function CrashPage({ wallet }) {
                 disabled={isProcessing}
                 min="1"
               />
-              <span>SUIT</span>
+              <span>tickets</span>
+              <span className="usd-hint">= ${(betAmount * 0.10).toFixed(2)} USD</span>
             </div>
 
             <div className="auto-section">
@@ -652,24 +702,12 @@ function CrashPage({ wallet }) {
                     <span>x target</span>
                   </div>
                   <div className="auto-info">
-                    Will auto cash-out at {targetMultiplier}x = <strong>{(betAmount * targetMultiplier).toFixed(1)} SUIT</strong>
+                    Will auto cash-out at {targetMultiplier}x = <strong>{(betAmount * targetMultiplier).toFixed(1)} tickets</strong>
                   </div>
                 </>
               )}
             </div>
           </div>
-        )}
-
-        {gameState === 'idle' && (
-          <button
-            className="action-btn start"
-            onClick={isDemoMode ? handleDemoStart : handleStartGame}
-            disabled={isProcessing || (!isDemoMode && CRASH_ADDRESS === "0x0000000000000000000000000000000000000000")}
-          >
-            {isProcessing ? 'Starting...' : autoMode
-              ? `🚀 START @ ${targetMultiplier}x - ${betAmount} SUIT`
-              : `🚀 START GAME - ${betAmount} SUIT`}
-          </button>
         )}
 
         {gameState === 'waiting' && (
@@ -704,7 +742,7 @@ function CrashPage({ wallet }) {
 
         {error && <div className="error-message">{error}</div>}
 
-        {!isDemoMode && CRASH_ADDRESS === "0x0000000000000000000000000000000000000000" && (
+        {!isDemoMode && !CRASH_CONTRACT && (
           <div className="deploy-notice">
             ⚠️ Contract not deployed. Run deployment script first.
           </div>
@@ -723,12 +761,12 @@ function CrashPage({ wallet }) {
         </div>
 
         <div className="info-panel">
-          <h3>Potential Wins with {betAmount} SUIT</h3>
+          <h3>Potential Wins with {betAmount} tickets</h3>
           <div className="potential-list">
-            <div className="potential-row"><span>@ 1.50x</span><span>{(betAmount * 1.5).toFixed(1)} SUIT</span></div>
-            <div className="potential-row"><span>@ 2.00x</span><span>{(betAmount * 2).toFixed(1)} SUIT</span></div>
-            <div className="potential-row highlight"><span>@ 5.00x</span><span>{(betAmount * 5).toFixed(1)} SUIT</span></div>
-            <div className="potential-row jackpot"><span>@ 10.00x</span><span>{(betAmount * 10).toFixed(1)} SUIT</span></div>
+            <div className="potential-row"><span>@ 1.50x</span><span>{(betAmount * 1.5).toFixed(1)} tickets</span></div>
+            <div className="potential-row"><span>@ 2.00x</span><span>{(betAmount * 2).toFixed(1)} tickets</span></div>
+            <div className="potential-row highlight"><span>@ 5.00x</span><span>{(betAmount * 5).toFixed(1)} tickets</span></div>
+            <div className="potential-row jackpot"><span>@ 10.00x</span><span>{(betAmount * 10).toFixed(1)} tickets</span></div>
           </div>
         </div>
 
@@ -770,268 +808,287 @@ function CrashPage({ wallet }) {
         .crash-game { background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 16px; padding: 30px; margin-bottom: 20px; border: 2px solid #2563eb; }
 
         .crash-display {
-          background: linear-gradient(180deg, #0f172a, #1e293b);
+          background: linear-gradient(180deg, #0a0f1a 0%, #0f172a 50%, #1e293b 100%);
           border-radius: 16px;
-          padding: 30px 30px 40px;
+          padding: 0;
           text-align: center;
           border: 2px solid #2563eb;
           position: relative;
           overflow: hidden;
-          min-height: 320px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-end;
+          min-height: 400px;
         }
 
-        /* Whale Arc Container */
-        .whale-arc-container {
+        .crash-display.crashed {
+          border-color: #ef4444;
+          box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+        }
+
+        .crash-display.cashed {
+          border-color: #22c55e;
+          box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+        }
+
+        /* Chart Container */
+        .chart-container {
           position: relative;
           width: 100%;
-          height: 180px;
-          margin-bottom: 10px;
+          height: 400px;
+          overflow: hidden;
         }
 
-        .arc-svg {
+        .chart-svg {
           width: 100%;
           height: 100%;
-          position: absolute;
-          top: 0;
-          left: 0;
         }
 
-        .arc-path {
-          transition: d 0.1s ease-out;
-          filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
-        }
-
-        .arc-path.crashed {
-          stroke: #ef4444;
-          filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
-        }
-
-        .arc-path.cashed {
-          stroke: #3b82f6;
-          filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.6));
-        }
-
-        /* Whale Rider */
-        .whale-rider {
-          position: absolute;
-          transition: left 0.1s ease-out, bottom 0.1s ease-out;
-          z-index: 10;
-        }
-
-        .whale-img {
-          width: 50px;
-          height: 50px;
-          object-fit: contain;
-          filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.6));
-          transition: transform 0.2s ease;
-        }
-
-        .whale-rider.playing .whale-img {
-          animation: whaleFloat 0.5s ease-in-out infinite;
-        }
-
-        .whale-rider.crashed {
-          animation: whaleFall 0.8s ease-in forwards;
-        }
-
-        .whale-rider.crashed .whale-img {
-          animation: whaleExplode 0.3s ease-out forwards;
-        }
-
-        .whale-rider.cashed .whale-img {
-          animation: whaleCelebrate 0.5s ease-in-out 3;
-        }
-
-        @keyframes whaleFloat {
-          0%, 100% { transform: translateY(0) rotate(-5deg); }
-          50% { transform: translateY(-5px) rotate(5deg); }
-        }
-
-        @keyframes whaleFall {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(150px) rotate(180deg); opacity: 0; }
-        }
-
-        @keyframes whaleExplode {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.5); }
-          100% { transform: scale(0); opacity: 0; }
-        }
-
-        @keyframes whaleCelebrate {
-          0%, 100% { transform: scale(1) rotate(0deg); }
-          25% { transform: scale(1.2) rotate(-10deg); }
-          50% { transform: scale(1.1) rotate(10deg); }
-          75% { transform: scale(1.2) rotate(-5deg); }
-        }
-
-        /* Explosion Effect */
-        .explosion {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          pointer-events: none;
-        }
-
-        .explosion span {
-          position: absolute;
-          font-size: 2rem;
-          animation: explodePiece 0.6s ease-out forwards;
-        }
-
-        .explosion span:nth-child(1) { animation-delay: 0s; }
-        .explosion span:nth-child(2) { animation-delay: 0.1s; }
-        .explosion span:nth-child(3) { animation-delay: 0.2s; }
-
-        @keyframes explodePiece {
-          0% { transform: translate(0, 0) scale(0.5); opacity: 1; }
-          100% { transform: translate(var(--tx, 30px), var(--ty, -30px)) scale(1.5); opacity: 0; }
-        }
-
-        .explosion span:nth-child(1) { --tx: -40px; --ty: -40px; }
-        .explosion span:nth-child(2) { --tx: 40px; --ty: -30px; }
-        .explosion span:nth-child(3) { --tx: 0px; --ty: 50px; }
-
-        /* Celebration Effect */
-        .celebration {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          pointer-events: none;
-        }
-
-        .celebration span {
-          position: absolute;
-          font-size: 1.5rem;
-          animation: celebratePiece 1s ease-out infinite;
-        }
-
-        .celebration span:nth-child(1) { animation-delay: 0s; --tx: -50px; --ty: -60px; }
-        .celebration span:nth-child(2) { animation-delay: 0.15s; --tx: 50px; --ty: -50px; }
-        .celebration span:nth-child(3) { animation-delay: 0.3s; --tx: -30px; --ty: -80px; }
-        .celebration span:nth-child(4) { animation-delay: 0.45s; --tx: 40px; --ty: -70px; }
-
-        @keyframes celebratePiece {
-          0% { transform: translate(0, 0) scale(0); opacity: 0; }
-          50% { transform: translate(calc(var(--tx) / 2), calc(var(--ty) / 2)) scale(1.2); opacity: 1; }
-          100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
-        }
-
-        .multiplier-value {
-          font-size: 5rem;
-          font-weight: 800;
-          font-family: 'JetBrains Mono', monospace;
-          text-shadow: 0 0 30px currentColor;
-          transition: color 0.3s ease;
-        }
-
-        .multiplier-value.playing {
-          animation: pulse 1s ease infinite;
-        }
-
-        .multiplier-value.crashed {
-          animation: shake 0.5s ease;
-        }
-
-        .multiplier-value.cashed {
-          animation: celebrate 0.5s ease;
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.02); }
-        }
-
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-10px); }
-          75% { transform: translateX(10px); }
-        }
-
-        @keyframes celebrate {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-          100% { transform: scale(1); }
-        }
-
-        .waiting-message {
-          margin-top: 20px;
-          color: #94a3b8;
-          font-size: 1.2rem;
-        }
-
-        .waiting-icon {
-          margin-right: 8px;
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .crash-message, .win-message {
-          margin-top: 20px;
-          text-align: center;
-        }
-
-        .crash-banner {
-          display: block;
-          font-size: 2rem;
-          font-weight: 800;
-          color: #ef4444;
-          text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
-        }
-
-        .crash-at {
-          display: block;
-          font-size: 1.2rem;
-          color: #94a3b8;
-          margin-top: 5px;
-        }
-
-        .win-banner {
-          display: block;
-          font-size: 2rem;
-          font-weight: 800;
-          color: #3b82f6;
-          text-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
-        }
-
-        .win-amount {
-          display: block;
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #3b82f6;
-          margin-top: 5px;
-        }
-
+        /* Rocket Trail */
         .rocket-trail {
+          transition: d 0.05s linear;
+        }
+
+        .rocket-trail.playing {
+          animation: trailPulse 0.5s ease-in-out infinite alternate;
+        }
+
+        .rocket-trail.crashed {
+          opacity: 0.6;
+        }
+
+        .rocket-trail.cashed {
+          animation: trailGlow 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes trailPulse {
+          0% { stroke-width: 5; }
+          100% { stroke-width: 7; }
+        }
+
+        @keyframes trailGlow {
+          0% { stroke-width: 5; filter: url(#strongGlow); }
+          100% { stroke-width: 8; filter: url(#strongGlow); }
+        }
+
+        .rocket-trail-glow {
+          opacity: 0.6;
+        }
+
+        /* Whale Mascot */
+        .crash-whale {
+          position: absolute;
+          transition: bottom 0.1s linear;
+          z-index: 20;
+        }
+
+        .whale-mascot {
+          width: 80px;
+          height: 80px;
+          object-fit: contain;
+          filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.9)) drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+          transform: rotate(-15deg);
+        }
+
+        .crash-whale.playing .whale-mascot {
+          animation: whaleFly 0.3s ease-in-out infinite;
+        }
+
+        .crash-whale.crashed .whale-mascot {
+          animation: whaleCrash 0.5s ease-out forwards;
+          filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.8));
+        }
+
+        .crash-whale.cashed .whale-mascot {
+          animation: whaleWin 0.5s ease-in-out infinite;
+          filter: drop-shadow(0 0 25px rgba(34, 197, 94, 0.9));
+        }
+
+        @keyframes whaleFly {
+          0%, 100% { transform: rotate(-15deg) translateY(0); }
+          50% { transform: rotate(-10deg) translateY(-5px); }
+        }
+
+        @keyframes whaleCrash {
+          0% { transform: rotate(-15deg) scale(1); }
+          50% { transform: rotate(45deg) scale(1.2); }
+          100% { transform: rotate(180deg) scale(0.3) translateY(100px); opacity: 0; }
+        }
+
+        @keyframes whaleWin {
+          0%, 100% { transform: rotate(-15deg) scale(1); }
+          50% { transform: rotate(-5deg) scale(1.15); }
+        }
+
+        /* Whale Flames */
+        .whale-flames {
+          position: absolute;
+          bottom: -15px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 2px;
+        }
+
+        .whale-flames span {
+          font-size: 1.2rem;
+          animation: flameFlicker 0.15s ease-in-out infinite alternate;
+        }
+
+        .whale-flames span:nth-child(2) {
+          animation-delay: 0.075s;
+        }
+
+        @keyframes flameFlicker {
+          0% { transform: scaleY(0.8) translateY(2px); opacity: 0.8; }
+          100% { transform: scaleY(1.2) translateY(-2px); opacity: 1; }
+        }
+
+        /* Whale Explosion */
+        .whale-explosion {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          pointer-events: none;
+        }
+
+        .whale-explosion span {
+          position: absolute;
+          font-size: 2.5rem;
+          animation: explode 0.6s ease-out forwards;
+        }
+
+        .whale-explosion span:nth-child(1) { --angle: -45deg; animation-delay: 0s; }
+        .whale-explosion span:nth-child(2) { --angle: 0deg; animation-delay: 0.1s; }
+        .whale-explosion span:nth-child(3) { --angle: 45deg; animation-delay: 0.2s; }
+
+        @keyframes explode {
+          0% { transform: rotate(var(--angle)) translateX(0) scale(0.5); opacity: 1; }
+          100% { transform: rotate(var(--angle)) translateX(60px) scale(1.5); opacity: 0; }
+        }
+
+        /* Whale Stars */
+        .whale-stars {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          pointer-events: none;
+        }
+
+        .whale-stars span {
+          position: absolute;
+          font-size: 1.5rem;
+          animation: starBurst 1s ease-out infinite;
+        }
+
+        .whale-stars span:nth-child(1) { animation-delay: 0s; --angle: -60deg; --dist: 50px; }
+        .whale-stars span:nth-child(2) { animation-delay: 0.2s; --angle: -20deg; --dist: 60px; }
+        .whale-stars span:nth-child(3) { animation-delay: 0.4s; --angle: 20deg; --dist: 55px; }
+        .whale-stars span:nth-child(4) { animation-delay: 0.6s; --angle: 60deg; --dist: 45px; }
+
+        @keyframes starBurst {
+          0% { transform: rotate(var(--angle)) translateX(0) scale(0); opacity: 0; }
+          50% { transform: rotate(var(--angle)) translateX(calc(var(--dist) * 0.5)) scale(1.2); opacity: 1; }
+          100% { transform: rotate(var(--angle)) translateX(var(--dist)) scale(0.5); opacity: 0; }
+        }
+
+        /* Multiplier at Bottom */
+        .multiplier-bottom {
           position: absolute;
           bottom: 20px;
           left: 50%;
           transform: translateX(-50%);
+          z-index: 15;
+          text-align: center;
+          pointer-events: none;
         }
 
-        .rocket {
+        .multiplier-number {
+          font-size: 4rem;
+          font-weight: 800;
+          font-family: 'JetBrains Mono', 'Fira Code', monospace;
+          text-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
+          transition: color 0.3s ease, text-shadow 0.3s ease;
+        }
+
+        .multiplier-bottom.playing .multiplier-number {
+          animation: multPulse 0.5s ease-in-out infinite alternate;
+        }
+
+        .multiplier-bottom.crashed .multiplier-number {
+          animation: multShake 0.3s ease-out;
+          text-shadow: 0 0 60px #ef4444, 0 0 100px #ef4444;
+        }
+
+        .multiplier-bottom.cashed .multiplier-number {
+          animation: multWin 0.5s ease-out;
+          text-shadow: 0 0 60px #22c55e, 0 0 100px #22c55e;
+        }
+
+        @keyframes multPulse {
+          0% { transform: scale(1); }
+          100% { transform: scale(1.03); }
+        }
+
+        @keyframes multShake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-10px); }
+          40% { transform: translateX(10px); }
+          60% { transform: translateX(-5px); }
+          80% { transform: translateX(5px); }
+        }
+
+        @keyframes multWin {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.15); }
+          100% { transform: scale(1.05); }
+        }
+
+        /* Status Text */
+        .status-text {
+          margin-top: 10px;
+        }
+
+        .status-text.waiting .loading-dots {
+          font-size: 1.2rem;
+          color: #94a3b8;
+          animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        .status-text.crashed .crash-label {
           font-size: 2rem;
-          animation: rocketFly 0.5s ease infinite;
+          font-weight: 800;
+          color: #ef4444;
+          text-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
+          animation: crashFlash 0.3s ease-out 3;
         }
 
-        @keyframes rocketFly {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-5px); }
+        @keyframes crashFlash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        .status-text.cashed .win-label {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #22c55e;
+          text-shadow: 0 0 20px rgba(34, 197, 94, 0.8);
+          animation: winGlow 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes winGlow {
+          0% { text-shadow: 0 0 20px rgba(34, 197, 94, 0.8); }
+          100% { text-shadow: 0 0 40px rgba(34, 197, 94, 1), 0 0 60px rgba(34, 197, 94, 0.5); }
         }
 
         .bet-section { margin: 25px 0; text-align: center; }
         .bet-section h3 { color: #f8fafc; margin-bottom: 15px; }
         .bet-section h4 { color: #94a3b8; margin: 15px 0 10px; font-size: 0.9rem; }
+        .bet-section .action-btn.start { margin: 0 auto 20px; }
         .bet-presets { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
         .bet-btn { padding: 10px 20px; background: #334155; border: 2px solid #475569; border-radius: 8px; color: #f8fafc; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .bet-btn:hover:not(:disabled) { background: #475569; border-color: #3b82f6; }
@@ -1183,8 +1240,13 @@ function CrashPage({ wallet }) {
         @media (max-width: 600px) {
           .crash-header { flex-direction: column; gap: 15px; text-align: center; }
           .contract-stats { flex-direction: column; }
-          .multiplier-value { font-size: 3.5rem; }
-          .crash-display { padding: 40px 20px; min-height: 160px; }
+          .crash-display { min-height: 300px; }
+          .chart-container { height: 300px; }
+          .multiplier-number { font-size: 2.5rem; }
+          .multiplier-bottom { bottom: 15px; }
+          .whale-mascot { width: 60px; height: 60px; }
+          .status-text.crashed .crash-label { font-size: 1.5rem; }
+          .status-text.cashed .win-label { font-size: 1.2rem; }
         }
       `}</style>
     </div>

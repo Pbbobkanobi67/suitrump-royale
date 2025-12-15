@@ -1,27 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// TODO: Replace ethers with Sui SDK
+import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import Matter from 'matter-js';
 import { useGameContext } from '../contexts/GameContext';
 import { useDemoContext } from '../contexts/DemoContext';
+import NeedTickets from '../components/NeedTickets';
+import { CURRENT_NETWORK, getContract } from '../config/sui-config';
 
-// Contract addresses - Sui Testnet
-const PLINKO_ADDRESS = "0x49Dfb6822e65A84fC88E1e00C66737Bc82A273ac";
-const SUIT_TOKEN = "0xf11Af396703E11D48780B5154E52Fd7b430C6C01";
-
-const PLINKO_ABI = [
-  "function dropBall(uint256 betAmount, uint8 rows, uint8 risk) returns (uint256 gameId)",
-  "function reveal(uint256 gameId)",
-  "function getPlayerActiveGame(address player) view returns (uint256)",
-  "function getGame(uint256 gameId) view returns (tuple(address player, uint256 betAmount, uint256 startBlock, uint256 revealBlock, uint8 rows, uint8 risk, uint8 state, uint8 landingSlot, uint256 multiplier, uint256 payout))",
-  "function blocksUntilReveal(uint256 gameId) view returns (uint256)",
-  "function getMultipliers(uint8 rows, uint8 risk) view returns (uint16[])",
-  "function getStats() view returns (uint256 totalGames, uint256 totalWagered, uint256 totalPaidOut, uint256 houseReserve)",
-  "function houseReserve() view returns (uint256)",
-  "function minBet() view returns (uint256)",
-  "function maxBet() view returns (uint256)",
-  "event GameStarted(uint256 indexed gameId, address indexed player, uint256 betAmount, uint8 rows, uint8 risk)",
-  "event GameCompleted(uint256 indexed gameId, address indexed player, uint8 landingSlot, uint256 multiplier, uint256 payout)"
-];
+// Get plinko contract address (null until deployed)
+const PLINKO_CONTRACT = getContract('plinko');
 
 const RISK_LEVELS = ['Low', 'Medium', 'High'];
 const ROW_OPTIONS = [8, 10, 12];
@@ -75,10 +61,15 @@ const MULTIPLIERS = {
 const PIN_CATEGORY = 0x0001;
 const BALL_CATEGORY = 0x0002;
 
-function PlinkoPage({ wallet }) {
+function PlinkoPage() {
   // Get settings from context
   const { plinkoSettings } = useGameContext();
-  const { isDemoMode, demoBalance, setDemoBalance } = useDemoContext();
+  const { isDemoMode, demoBalance, setDemoBalance, realTickets, setRealTickets } = useDemoContext();
+  const account = useCurrentAccount();
+  const isWalletConnected = !!account;
+
+  // Current balance based on mode
+  const currentBalance = isDemoMode ? demoBalance : realTickets;
 
   const [betAmount, setBetAmount] = useState(10);
   const [rows, setRows] = useState(plinkoSettings?.defaultRows || 10);
@@ -156,9 +147,11 @@ function PlinkoPage({ wallet }) {
   const recordingRef = useRef(false);
   const currentPathRef = useRef([]);
 
-  // Get current multipliers
-  const multipliers = MULTIPLIERS[rows][risk];
-  const slots = rows + 1;
+  // Get current multipliers (with fallback for safety)
+  const validRows = MULTIPLIERS[rows] ? rows : 10;
+  const validRisk = MULTIPLIERS[validRows]?.[risk] !== undefined ? risk : 1;
+  const multipliers = MULTIPLIERS[validRows][validRisk];
+  const slots = validRows + 1;
   const maxMultiplier = Math.max(...multipliers);
 
   const isBetValid = (amount) => {
@@ -326,9 +319,9 @@ function PlinkoPage({ wallet }) {
 
       setLandingSlot(finalSlot);
 
-      // For test mode (no contract) or demo bet mode, show result
-      if (targetSlot === null || targetSlot === 'demo_bet') {
-        const mult = MULTIPLIERS[rows][risk][finalSlot];
+      // For test mode, demo bet mode, or real bet mode, show result
+      if (targetSlot === null || targetSlot === 'demo_bet' || targetSlot === 'real_bet') {
+        const mult = MULTIPLIERS[rows]?.[risk]?.[finalSlot] || 1;
         const payout = betAmount * mult;
         const profit = payout - betAmount;
         const isWin = mult >= 1;
@@ -336,6 +329,11 @@ function PlinkoPage({ wallet }) {
         // Credit demo balance if this was a demo bet
         if (targetSlot === 'demo_bet' && isDemoMode) {
           setDemoBalance(prev => prev + payout);
+        }
+
+        // Credit real tickets if this was a real bet
+        if (targetSlot === 'real_bet' && !isDemoMode) {
+          setRealTickets(prev => prev + payout);
         }
 
         setLastResult({
@@ -359,7 +357,7 @@ function PlinkoPage({ wallet }) {
         ballRef.current = null;
       }
     }, 500);
-  }, [rows, risk, betAmount, isDemoMode, setDemoBalance]);
+  }, [rows, risk, betAmount, isDemoMode, setDemoBalance, setRealTickets]);
 
   // Keep ref updated for event handler
   useEffect(() => {
@@ -686,209 +684,81 @@ function PlinkoPage({ wallet }) {
 
   // Fetch balance and contract data
   useEffect(() => {
-    if (!wallet?.account || !wallet?.signer || PLINKO_ADDRESS === "0x0000000000000000000000000000000000000000") return;
+    // Contract not deployed yet - skip blockchain fetches
+    if (!PLINKO_CONTRACT || !isWalletConnected) return;
 
-    const fetchData = async () => {
-      try {
-        const blueToken = new ethers.Contract(
-          SUIT_TOKEN,
-          ["function balanceOf(address) view returns (uint256)"],
-          wallet.signer
-        );
-        const bal = await blueToken.balanceOf(wallet.account);
-        setBalance(parseFloat(ethers.formatEther(bal)).toLocaleString());
+    // TODO: Implement Sui contract integration when deployed
+    console.log('Plinko contract integration pending');
+  }, [isWalletConnected]);
 
-        const plinko = new ethers.Contract(PLINKO_ADDRESS, PLINKO_ABI, wallet.signer);
-        const [reserve, activeId] = await Promise.all([
-          plinko.houseReserve(),
-          plinko.getPlayerActiveGame(wallet.account)
-        ]);
-
-        const reserveNum = parseFloat(ethers.formatEther(reserve));
-        setHouseReserve(reserveNum.toLocaleString());
-        setHouseReserveRaw(reserveNum);
-
-        if (activeId > 0n) {
-          const game = await plinko.getGame(activeId);
-          const currentBlock = await wallet.signer.provider.getBlockNumber();
-          const blocksSinceReveal = currentBlock - Number(game.revealBlock);
-
-          if (blocksSinceReveal > 250) {
-            setActiveGameId(null);
-            setGameState('idle');
-            setError('Previous game expired. Start a new game.');
-          } else {
-            setActiveGameId(Number(activeId));
-            const blocks = await plinko.blocksUntilReveal(activeId);
-            setBlocksRemaining(Number(blocks));
-            setGameState('waiting');
-          }
-        }
-      } catch (err) {
-        console.error('Fetch error:', err);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, [wallet?.signer, wallet?.account]);
-
-  // Auto-reveal polling
+  // Auto-reveal polling (blockchain mode - not yet implemented)
   const autoRevealTriggered = useRef(false);
 
   useEffect(() => {
-    if (!activeGameId || !wallet?.signer || PLINKO_ADDRESS === "0x0000000000000000000000000000000000000000") return;
+    // Contract polling disabled until Sui contract is deployed
+    if (!activeGameId || !PLINKO_CONTRACT) return;
 
-    const checkAndReveal = async () => {
-      try {
-        const plinko = new ethers.Contract(PLINKO_ADDRESS, PLINKO_ABI, wallet.signer);
-        const blocks = await plinko.blocksUntilReveal(activeGameId);
-        setBlocksRemaining(Number(blocks));
+    // TODO: Implement Sui contract polling when deployed
+  }, [activeGameId]);
 
-        if (Number(blocks) === 0 && gameState === 'waiting' && !autoRevealTriggered.current && !isProcessing) {
-          autoRevealTriggered.current = true;
-          setError(null);
-          setIsProcessing(true);
-          setGameState('dropping');
-
-          try {
-            const tx = await plinko.reveal(activeGameId);
-            const receipt = await tx.wait();
-
-            let foundEvent = false;
-            for (const log of receipt.logs) {
-              try {
-                const parsed = plinko.interface.parseLog({ topics: log.topics, data: log.data });
-                if (parsed?.name === 'GameCompleted') {
-                  const slot = Number(parsed.args.landingSlot);
-                  const mult = Number(parsed.args.multiplier) / 100;
-                  const payout = parseFloat(ethers.formatEther(parsed.args.payout));
-                  const profit = payout - betAmount;
-                  const isWin = payout >= betAmount;
-
-                  setLastResult({
-                    slot,
-                    multiplier: mult,
-                    payout,
-                    profit,
-                    win: isWin
-                  });
-                  // Stats updated via useEffect after result displays
-
-                  dropBall(slot);
-                  foundEvent = true;
-                  break;
-                }
-              } catch (e) {}
-            }
-
-            if (!foundEvent) {
-              const game = await plinko.getGame(activeGameId);
-              const slot = Number(game.landingSlot);
-              const mult = Number(game.multiplier) / 100;
-              const payout = parseFloat(ethers.formatEther(game.payout));
-              const profit = payout - betAmount;
-              const isWin = payout >= betAmount;
-
-              setLastResult({
-                slot,
-                multiplier: mult,
-                payout,
-                profit,
-                win: isWin
-              });
-              // Stats updated via useEffect after result displays
-
-              dropBall(slot);
-            }
-
-            setActiveGameId(null);
-          } catch (revealErr) {
-            console.error('Auto-reveal error:', revealErr);
-            const errorMsg = revealErr.reason || revealErr.message || 'Failed to reveal';
-
-            if (errorMsg.includes('Block hash expired')) {
-              setError('Game expired. Please start a new game.');
-              setActiveGameId(null);
-            } else {
-              setError(errorMsg);
-            }
-            setGameState('idle');
-            setIsProcessing(false);
-            autoRevealTriggered.current = false;
-          }
-        }
-      } catch (err) {
-        console.error('Block check error:', err);
-      }
-    };
-
-    checkAndReveal();
-    const interval = setInterval(checkAndReveal, 1000);
-    return () => clearInterval(interval);
-  }, [activeGameId, wallet?.signer, gameState, isProcessing, betAmount, dropBall]);
-
-  const handleDropBall = async () => {
-    if (!wallet?.signer) {
+  // Real mode drop handler (uses real tickets)
+  const handleDropBall = () => {
+    if (!isWalletConnected) {
       setError('Please connect your wallet first');
       return;
     }
-    if (PLINKO_ADDRESS === "0x0000000000000000000000000000000000000000") {
-      setError('Contract not deployed yet');
+
+    if (gameState !== 'idle') return;
+
+    if (betAmount > realTickets) {
+      setError('Insufficient ticket balance! Buy tickets at the Cashier.');
       return;
     }
 
-    try {
-      setError(null);
-      setLastResult(null);
-      setIsProcessing(true);
-      setGameState('submitting'); // Show "Submitting..." while wallet confirms
-      setLandingSlot(null);
-      autoRevealTriggered.current = false;
+    // Deduct from real tickets
+    setRealTickets(prev => prev - betAmount);
 
-      const plinko = new ethers.Contract(PLINKO_ADDRESS, PLINKO_ABI, wallet.signer);
-      const betWei = ethers.parseEther(betAmount.toString());
+    setError(null);
+    setLastResult(null);
+    setLandingSlot(null);
+    targetSlotRef.current = null;
+    setGameState('dropping');
+    setIsProcessing(true);
 
-      const blueToken = new ethers.Contract(
-        SUIT_TOKEN,
-        [
-          "function approve(address,uint256) returns (bool)",
-          "function allowance(address,address) view returns (uint256)"
-        ],
-        wallet.signer
-      );
+    // Mark as real bet for payout handling
+    targetSlotRef.current = 'real_bet';
 
-      const currentAllowance = await blueToken.allowance(wallet.account, PLINKO_ADDRESS);
-
-      if (currentAllowance < betWei) {
-        const maxApproval = ethers.MaxUint256;
-        const approveTx = await blueToken.approve(PLINKO_ADDRESS, maxApproval);
-        await approveTx.wait();
-      }
-
-      const tx = await plinko.dropBall(betWei, rows, risk);
-      const receipt = await tx.wait();
-
-      for (const log of receipt.logs) {
-        try {
-          const parsed = plinko.interface.parseLog({ topics: log.topics, data: log.data });
-          if (parsed?.name === 'GameStarted') {
-            setActiveGameId(Number(parsed.args.gameId));
-            setBlocksRemaining(2);
-            setGameState('waiting');
-            break;
-          }
-        } catch (e) {}
-      }
-
-      setIsProcessing(false);
-    } catch (err) {
-      console.error('Drop error:', err);
-      setError(err.reason || err.message || 'Failed to drop ball');
-      setIsProcessing(false);
-      setGameState('idle');
+    // Drop ball using physics
+    if (!engineRef.current) {
+      initEngine();
     }
+
+    const pinDistanceX = getPinDistanceX(rows);
+    const pinRadius = getPinRadius(rows);
+    const ballOffsetRangeX = pinDistanceX * 0.8;
+    const ballRadius = pinRadius * 2;
+
+    const startX = CANVAS.WIDTH / 2 + (Math.random() - 0.5) * ballOffsetRangeX;
+
+    const ball = Matter.Bodies.circle(
+      startX,
+      0,
+      ballRadius,
+      {
+        restitution: 0.8,
+        friction: BALL_FRICTIONS.friction,
+        frictionAir: BALL_FRICTIONS.frictionAirByRowCount[rows] || 0.038,
+        collisionFilter: {
+          category: BALL_CATEGORY,
+          mask: PIN_CATEGORY,
+        },
+        render: { fillStyle: '#3b82f6' }, // Blue for real mode
+        label: 'ball'
+      }
+    );
+
+    ballRef.current = ball;
+    Matter.Composite.add(engineRef.current.world, ball);
   };
 
   const resetGame = () => {
@@ -977,14 +847,44 @@ function PlinkoPage({ wallet }) {
     return '#6b7280';
   };
 
+  // Check if user needs tickets
+  const needsTickets = currentBalance <= 0;
+
   return (
     <div className="plinko-page">
+      {/* Need Tickets Overlay */}
+      {needsTickets && <NeedTickets gameName="SUITRUMP Plinko" isWalletConnected={isWalletConnected} />}
+
       {/* Demo Mode Banner */}
       {isDemoMode && (
         <div className="demo-mode-banner">
           <span className="demo-icon">🎮</span>
           <span className="demo-text">
-            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} demo SUIT tokens. No wallet needed!
+            <strong>FREE PLAY MODE</strong> - Practice with {demoBalance.toLocaleString()} tickets. No wallet needed!
+          </span>
+        </div>
+      )}
+
+      {/* Real Mode - Not Connected Banner */}
+      {!isDemoMode && !isWalletConnected && (
+        <div className="connect-wallet-banner">
+          <span className="wallet-icon">🔗</span>
+          <span className="wallet-text">
+            <strong>TESTNET MODE</strong> - Connect your Sui wallet to play with test tokens
+          </span>
+          <ConnectButton />
+        </div>
+      )}
+
+      {/* Real Mode - Connected Banner */}
+      {!isDemoMode && isWalletConnected && (
+        <div className="testnet-mode-banner">
+          <span className="testnet-icon">🧪</span>
+          <span className="testnet-text">
+            <strong>TESTNET MODE</strong> - Playing with TEST_SUITRUMP on {CURRENT_NETWORK}
+          </span>
+          <span className="wallet-address">
+            {account?.address?.slice(0, 6)}...{account?.address?.slice(-4)}
           </span>
         </div>
       )}
@@ -1009,7 +909,7 @@ function PlinkoPage({ wallet }) {
                 <div className="live-stat">
                   <span className="live-stat-label">Profit</span>
                   <span className={`live-stat-value ${sessionStats.totalProfit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-                    {sessionStats.totalProfit >= 0 ? '+' : ''}{sessionStats.totalProfit.toFixed(2)} SUIT
+                    {sessionStats.totalProfit >= 0 ? '+' : ''}{sessionStats.totalProfit.toFixed(2)} tickets
                   </span>
                 </div>
                 <div className="live-stat">
@@ -1050,15 +950,15 @@ function PlinkoPage({ wallet }) {
         )}
 
         <div className="plinko-balance">
-          <span className="balance-label">Balance</span>
-          <span className="balance-value">{balance} SUIT</span>
+          <span className="balance-label">{isDemoMode ? 'Demo Balance' : 'Ticket Balance'}</span>
+          <span className="balance-value" style={isDemoMode ? { color: '#c4b5fd' } : {}}>{currentBalance.toLocaleString()} tickets</span>
         </div>
       </div>
 
       <div className="plinko-stats">
         <div className="stat-box">
           <span className="stat-label">House Reserve</span>
-          <span className="stat-value">{houseReserve} SUIT</span>
+          <span className="stat-value">{houseReserve} tickets</span>
         </div>
         <div className="stat-box">
           <span className="stat-label">Risk Level</span>
@@ -1099,7 +999,7 @@ function PlinkoPage({ wallet }) {
             <div className="result-content">
               <span className="result-mult">{lastResult.multiplier}x</span>
               <span className="result-amount">
-                {lastResult.win ? '+' : ''}{lastResult.profit.toFixed(2)} SUIT
+                {lastResult.win ? '+' : ''}{lastResult.profit.toFixed(2)} tickets
               </span>
             </div>
           </div>
@@ -1114,9 +1014,9 @@ function PlinkoPage({ wallet }) {
               <button
                 className="action-btn drop"
                 onClick={isDemoMode ? handleDemoDrop : handleDropBall}
-                disabled={isProcessing || (!isDemoMode && PLINKO_ADDRESS === "0x0000000000000000000000000000000000000000")}
+                disabled={isProcessing || (!isDemoMode && !PLINKO_CONTRACT)}
               >
-                {isProcessing ? 'Dropping...' : `🎯 DROP BALL - ${betAmount} SUIT`}
+                {isProcessing ? 'Dropping...' : `🎯 DROP BALL - ${betAmount} tickets`}
               </button>
               {plinkoSettings?.testDropEnabled !== false && (
                 <button
@@ -1130,7 +1030,7 @@ function PlinkoPage({ wallet }) {
             </div>
 
             <div className="potential-win">
-              Max Win: <strong>{(betAmount * Math.max(...multipliers)).toFixed(1)} SUIT</strong>
+              Max Win: <strong>{(betAmount * Math.max(...multipliers)).toFixed(1)} tickets</strong>
             </div>
 
             <div className="controls-row">
@@ -1204,7 +1104,8 @@ function PlinkoPage({ wallet }) {
                       disabled={isProcessing}
                       min="1"
                     />
-                    <span>SUIT</span>
+                    <span>tickets</span>
+                    <span className="usd-hint">= ${(betAmount * 0.10).toFixed(2)} USD</span>
                   </div>
                 </div>
               </div>
@@ -1250,7 +1151,7 @@ function PlinkoPage({ wallet }) {
 
         {error && <div className="error-message">{error}</div>}
 
-        {PLINKO_ADDRESS === "0x0000000000000000000000000000000000000000" && (
+        {!PLINKO_CONTRACT && (
           <div className="deploy-notice">
             Contract not deployed. Run deployment script first.
           </div>
@@ -1330,7 +1231,7 @@ function PlinkoPage({ wallet }) {
             <ol className="instructions-list">
               <li><strong>Choose Risk Level:</strong> Low, Medium, or High - affects multiplier distribution</li>
               <li><strong>Select Rows:</strong> 8, 10, or 12 rows - more rows = more variance</li>
-              <li><strong>Set Bet Amount:</strong> Enter your bet in SUIT tokens (1-500)</li>
+              <li><strong>Set Bet Amount:</strong> Enter your bet in tickets (1 ticket = $0.10)</li>
               <li><strong>Drop Ball:</strong> Approve tokens and drop the ball</li>
               <li><strong>Wait:</strong> Wait ~6 seconds for block confirmation</li>
               <li><strong>Watch:</strong> Ball drops automatically when ready!</li>

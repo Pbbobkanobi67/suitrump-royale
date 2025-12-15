@@ -6,6 +6,8 @@ import App from './App.jsx';
 import '@mysten/dapp-kit/dist/index.css';
 import './styles/raffle.css';
 import './styles/dice.css';
+import './styles/admin.css';
+import './styles/cashier.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
