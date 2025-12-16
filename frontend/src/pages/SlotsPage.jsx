@@ -307,6 +307,7 @@ function SlotsPage() {
 
   const getButtonText = () => {
     if (isSpinning) return 'Spinning...';
+    if (!isDemoMode && !isWalletConnected) return 'CONNECT WALLET TO PLAY';
     if (!isDemoMode && pendingSpinId && blocksRemaining > 0) return `Wait ${blocksRemaining} blocks...`;
     if (!isDemoMode && pendingSpinId && blocksRemaining === 0) return 'REVEAL RESULT';
     return `SPIN - ${betAmount} tickets`;
@@ -322,7 +323,10 @@ function SlotsPage() {
     }
   };
 
-  const isDisabled = isSpinning || (!isDemoMode && pendingSpinId && blocksRemaining > 0);
+  // Disable spin if: spinning, waiting for blocks, OR in real mode without wallet connected
+  const isDisabled = isSpinning ||
+    (!isDemoMode && pendingSpinId && blocksRemaining > 0) ||
+    (!isDemoMode && !isWalletConnected);
 
   const dismissResult = () => setShowResult(null);
 
