@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useCurrentAccount, useSuiClient, ConnectButton } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction, ConnectButton } from '@mysten/dapp-kit';
+import { Transaction } from '@mysten/sui/transactions';
 import { useDemoContext } from '../contexts/DemoContext';
 import { useSuitrumpPrice } from '../hooks/useSuitrumpPrice';
-import { CURRENT_NETWORK, getNetworkConfig } from '../config/sui-config';
+import { CURRENT_NETWORK, getNetworkConfig, SUI_CONFIG, TOKEN_DECIMALS } from '../config/sui-config';
 import '../styles/cashier.css';
 
 // Get network config
@@ -15,6 +16,7 @@ const TICKET_VALUE_USD = 0.10;
 function CashierPage({ wallet, suitBalance: propSuitBalance }) {
   const account = useCurrentAccount();
   const suiClient = useSuiClient();
+  const { mutate: signAndExecute, isPending: isTxPending } = useSignAndExecuteTransaction();
   const {
     isDemoMode,
     demoBalance,
@@ -153,32 +155,120 @@ function CashierPage({ wallet, suitBalance: propSuitBalance }) {
     }
 
     if (isDemoMode) {
+      // Demo mode - just update local state
       if (setDemoWalletBalance) {
         setDemoWalletBalance(prev => prev - suitAmount);
       }
       setDemoBalance(prev => prev + ticketsReceived);
+
+      setTxHistory(prev => [{
+        type: 'buy_in',
+        suitrump: suitAmount,
+        tickets: ticketsReceived,
+        rate: SUITRUMP_PER_TICKET,
+        timestamp: new Date().toLocaleTimeString()
+      }, ...prev.slice(0, 9)]);
+
+      setMessage({
+        type: 'success',
+        text: `Bought ${ticketsReceived.toLocaleString()} tickets for ${suitAmount.toLocaleString()} SUITRUMP`
+      });
+      setBuyInAmount('');
     } else {
+      // Real mode - require actual blockchain transaction
       if (!walletAddress) {
         setMessage({ type: 'error', text: 'Please connect your wallet first' });
         return;
       }
-      // Use new per-wallet buyTickets function with deposit tracking
-      buyTickets(walletAddress, suitAmount, ticketsReceived, SUITRUMP_PER_TICKET);
+
+      setMessage({ type: 'info', text: 'Please approve the transaction in your wallet...' });
+
+      try {
+        // Convert to smallest units (9 decimals)
+        const amountInSmallestUnits = BigInt(Math.floor(suitAmount * (10 ** TOKEN_DECIMALS)));
+
+        // Get SUITRUMP coins from wallet
+        const suitrumpType = networkConfig.tokens.SUITRUMP;
+        const coins = await suiClient.getCoins({
+          owner: walletAddress,
+          coinType: suitrumpType
+        });
+
+        if (!coins.data || coins.data.length === 0) {
+          setMessage({ type: 'error', text: 'No SUITRUMP tokens found in wallet' });
+          return;
+        }
+
+        // Build transaction to transfer SUITRUMP to treasury
+        const tx = new Transaction();
+
+        // If we need to merge coins first
+        const totalAvailable = coins.data.reduce((sum, coin) => sum + BigInt(coin.balance), 0n);
+        if (totalAvailable < amountInSmallestUnits) {
+          setMessage({ type: 'error', text: 'Insufficient SUITRUMP balance' });
+          return;
+        }
+
+        // Use the first coin that has enough, or merge if needed
+        let coinToUse;
+        const singleCoin = coins.data.find(c => BigInt(c.balance) >= amountInSmallestUnits);
+
+        if (singleCoin) {
+          // Split exact amount from this coin
+          const [splitCoin] = tx.splitCoins(tx.object(singleCoin.coinObjectId), [amountInSmallestUnits]);
+          coinToUse = splitCoin;
+        } else {
+          // Need to merge multiple coins first
+          const primaryCoin = tx.object(coins.data[0].coinObjectId);
+          if (coins.data.length > 1) {
+            tx.mergeCoins(primaryCoin, coins.data.slice(1).map(c => tx.object(c.coinObjectId)));
+          }
+          const [splitCoin] = tx.splitCoins(primaryCoin, [amountInSmallestUnits]);
+          coinToUse = splitCoin;
+        }
+
+        // Transfer to treasury
+        tx.transferObjects([coinToUse], SUI_CONFIG.wallets.treasury);
+
+        // Sign and execute transaction
+        signAndExecute(
+          { transaction: tx },
+          {
+            onSuccess: (result) => {
+              console.log('Transaction successful:', result);
+
+              // Update local ticket balance after successful transaction
+              buyTickets(walletAddress, suitAmount, ticketsReceived, SUITRUMP_PER_TICKET);
+
+              setTxHistory(prev => [{
+                type: 'buy_in',
+                suitrump: suitAmount,
+                tickets: ticketsReceived,
+                rate: SUITRUMP_PER_TICKET,
+                txDigest: result.digest,
+                timestamp: new Date().toLocaleTimeString()
+              }, ...prev.slice(0, 9)]);
+
+              setMessage({
+                type: 'success',
+                text: `Bought ${ticketsReceived.toLocaleString()} tickets for ${suitAmount.toLocaleString()} SUITRUMP`
+              });
+              setBuyInAmount('');
+            },
+            onError: (error) => {
+              console.error('Transaction failed:', error);
+              setMessage({
+                type: 'error',
+                text: `Transaction failed: ${error.message || 'User rejected or error occurred'}`
+              });
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error building transaction:', error);
+        setMessage({ type: 'error', text: `Error: ${error.message}` });
+      }
     }
-
-    setTxHistory(prev => [{
-      type: 'buy_in',
-      suitrump: suitAmount,
-      tickets: ticketsReceived,
-      rate: SUITRUMP_PER_TICKET,
-      timestamp: new Date().toLocaleTimeString()
-    }, ...prev.slice(0, 9)]);
-
-    setMessage({
-      type: 'success',
-      text: `Bought ${ticketsReceived.toLocaleString()} tickets for ${suitAmount.toLocaleString()} SUITRUMP`
-    });
-    setBuyInAmount('');
   };
 
   // Handle Cash Out (Tickets -> SUITRUMP)
@@ -438,9 +528,9 @@ function CashierPage({ wallet, suitBalance: propSuitBalance }) {
           <button
             className="btn btn-primary btn-large"
             onClick={handleBuyIn}
-            disabled={!buyInAmount || parseFloat(buyInAmount) <= 0 || priceLoading || (!isDemoMode && !isWalletConnected)}
+            disabled={!buyInAmount || parseFloat(buyInAmount) <= 0 || priceLoading || (!isDemoMode && !isWalletConnected) || isTxPending}
           >
-            {!isDemoMode && !isWalletConnected ? 'Connect Wallet to Buy' : 'Buy Tickets'}
+            {isTxPending ? 'Waiting for Wallet...' : !isDemoMode && !isWalletConnected ? 'Connect Wallet to Buy' : 'Buy Tickets'}
           </button>
         </div>
 
