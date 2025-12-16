@@ -12,9 +12,6 @@ const isTestnet = CURRENT_NETWORK === 'testnet';
 // Exchange rate: 1 ticket = $0.10
 const TICKET_VALUE_USD = 0.10;
 
-// Testnet fixed price (test tokens have no real value)
-const TESTNET_SUITRUMP_PRICE = 0.0001; // $0.0001 per test token (arbitrary for testing)
-
 function CashierPage({ wallet, suitBalance: propSuitBalance }) {
   const account = useCurrentAccount();
   const suiClient = useSuiClient();
@@ -32,17 +29,14 @@ function CashierPage({ wallet, suitBalance: propSuitBalance }) {
     connectedWallet
   } = useDemoContext();
 
-  // Get live SUITRUMP price from DEX (only used for mainnet)
+  // Get live SUITRUMP price from DEX (same price shown in header)
   const {
-    price: mainnetPrice,
+    price: suitrumpPrice,
     loading: priceLoading,
     error: priceError,
     lastUpdated,
     poolData,
   } = useSuitrumpPrice();
-
-  // Use testnet fixed price or mainnet live price
-  const suitrumpPrice = isTestnet ? TESTNET_SUITRUMP_PRICE : mainnetPrice;
 
   // Calculate dynamic exchange rate
   const SUITRUMP_PER_DOLLAR = 1 / suitrumpPrice;
@@ -302,22 +296,20 @@ function CashierPage({ wallet, suitBalance: propSuitBalance }) {
       {/* Live Price Display */}
       <div className="price-ticker">
         <div className="price-info">
-          <span className="price-label">{isTestnet ? 'Test Token Price:' : 'SUITRUMP Price:'}</span>
+          <span className="price-label">SUITRUMP Price:</span>
           <span className="price-value">
-            ${suitrumpPrice.toFixed(6)}
+            ${suitrumpPrice?.toFixed(8) || '...'}
           </span>
-          {isTestnet ? (
-            <span className="price-source testnet-price">Fixed testnet rate</span>
-          ) : poolData && (
+          {poolData && (
             <span className="price-source">
               via {poolData.dex} (${poolData.liquidity?.toLocaleString(undefined, {maximumFractionDigits: 0})} liq)
             </span>
           )}
         </div>
-        {!isTestnet && lastUpdated && (
+        {lastUpdated && (
           <span className="price-updated">Updated: {lastUpdated.toLocaleTimeString()}</span>
         )}
-        {!isTestnet && priceError && <span className="price-error">Using fallback price</span>}
+        {priceError && <span className="price-error">Using fallback price</span>}
       </div>
 
       <div className="balance-cards">
