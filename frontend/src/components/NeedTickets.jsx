@@ -118,8 +118,7 @@ function NeedTickets({ gameName, isWalletConnected = false }) {
           // Not Connected - Prompt to Connect or Try Demo
           <>
             <p>
-              Connect your wallet and get tickets to play {gameName || 'this game'},
-              {demoModeAvailable ? ' or try Free Play mode!' : '.'}
+              Connect your wallet and get tickets to play {gameName || 'this game'}.
             </p>
 
             <div className="need-tickets-info">
@@ -127,18 +126,23 @@ function NeedTickets({ gameName, isWalletConnected = false }) {
                 <span>Ticket Price:</span>
                 <span className="value">$0.10 each (in SUITRUMP)</span>
               </div>
+              <div className="info-row">
+                <span>Network:</span>
+                <span className="value">Sui Testnet</span>
+              </div>
             </div>
 
-            <div className="need-tickets-actions">
-              <p className="need-tickets-hint" style={{ marginBottom: '16px' }}>
-                Connect your Sui wallet using the button in the header
+            <button onClick={goToCashier} className="btn btn-primary btn-large get-tickets-btn">
+              Go to Cashier
+            </button>
+            <p className="need-tickets-hint" style={{ marginBottom: '12px' }}>
+              Connect your Sui wallet at the Cashier to buy tickets
+            </p>
+            {demoModeAvailable && (
+              <p className="need-tickets-hint">
+                Or click "FREE PLAY" in the header to try demo mode
               </p>
-              {demoModeAvailable && (
-                <p className="need-tickets-hint">
-                  Or click "FREE PLAY" in the header to try demo mode
-                </p>
-              )}
-            </div>
+            )}
           </>
         )}
       </div>
