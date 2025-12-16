@@ -7298,3 +7298,172 @@ h3 {
     font-size: 0.9rem;
   }
 }
+
+/* ============================== */
+/* BLUE OUTLINE CARDS            */
+/* ============================== */
+
+.card.blue-outline {
+  border: 2px solid var(--primary-blue);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+/* USD Value Displays */
+.usd-value {
+  color: var(--text-gray);
+  font-size: 0.85em;
+  margin-left: 8px;
+  opacity: 0.9;
+}
+
+.usd-sub {
+  display: block;
+  font-size: 0.75rem;
+  color: #22c55e;
+  margin-top: 4px;
+  font-weight: normal;
+}
+
+.ticket-usd-preview {
+  text-align: center;
+  margin: 8px 0;
+  min-height: 24px;
+}
+
+.usd-preview {
+  color: #22c55e;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+/* ============================== */
+/* ESCROW PHASE STYLES           */
+/* ============================== */
+
+.escrow-info-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(30, 58, 95, 0.25));
+  border: 2px solid var(--primary-blue);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.escrow-info-card h3 {
+  color: var(--light-blue);
+  margin-bottom: 12px;
+  font-size: 1.3rem;
+}
+
+.escrow-desc {
+  color: var(--text-gray);
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.escrow-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.escrow-stat {
+  background: rgba(10, 22, 40, 0.6);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.escrow-stat .stat-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-gray);
+  margin-bottom: 8px;
+}
+
+.escrow-stat .stat-value {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: var(--light-blue);
+}
+
+.escrow-stat .stat-value.highlight {
+  color: var(--primary-blue);
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.escrow-withdraw-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(59, 130, 246, 0.3);
+  text-align: center;
+}
+
+.withdraw-info {
+  color: var(--text-gray);
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-warning:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+}
+
+.btn-warning:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Status waiting style */
+.status-waiting {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+/* Mobile responsive escrow */
+@media (max-width: 768px) {
+  .escrow-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .escrow-stat {
+    padding: 12px;
+  }
+
+  .escrow-stat .stat-value {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .escrow-info-card {
+    padding: 16px;
+  }
+
+  .escrow-info-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .escrow-desc {
+    font-size: 0.85rem;
+  }
+}

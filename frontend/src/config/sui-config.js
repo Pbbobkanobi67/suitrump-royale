@@ -99,7 +99,7 @@ export const SUI_CONFIG = {
     tokens: '0xe8fd4cdccd697947bdb84f357eadb626bafac3db769c228336ebcd1ad6ca9081',
     games: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
     cashier: '0x_CASHIER_PACKAGE_ID',
-    raffle: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
+    raffle: '0x13257d34d094af055797f9089c6bc6d5be401e031be3f16841806e71ab877e65',
     dice: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
     progressive: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
     slots: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
@@ -110,7 +110,7 @@ export const SUI_CONFIG = {
   },
 
   adminCaps: {
-    raffle: '0xeb9dbb06d938d17130ecbee2e37337dbb3f986227ac655d829ac73329d436d3c',
+    raffle: '0x78878adc57a677d7c189ea51063d7e43ad82696d9838b6efd93a0bb6af2b4443',
     dice: '0x169aa34a59a288feaa610c1561ce21abf1f5cc4c24b982718a9336ecd829b571',
     slots: '0x1ed8daa44f95751371723b1d50b589f5fc9774ecd19f28c15c6fb7b0b13ab98c',
     crash: '0x94f2b7d2bfb08d32f70ca83c0495614db384b1eada0c5cc2691cfd2d30aad384',
@@ -125,7 +125,7 @@ export const SUI_CONFIG = {
     cashier: '0x_CASHIER_OBJECT_ID',
     dice: '0x_DICE_OBJECT_ID',
     progressive: '0x_PROGRESSIVE_OBJECT_ID',
-    raffle: '0x_RAFFLE_HOUSE_ID',
+    raffle: '0x8ae94a481aefbac6eceb7a5a539b033d09ba2307bfa7261c0604f443be74f909',
     slots: '0x_SLOTS_OBJECT_ID',
     crash: '0x_CRASH_OBJECT_ID',
     plinko: '0x_PLINKO_OBJECT_ID',

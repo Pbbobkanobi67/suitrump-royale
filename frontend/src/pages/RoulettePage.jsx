@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import { useDemoContext } from '../contexts/DemoContext';
 import { useGameWallet } from '../hooks/useGameWallet';
@@ -22,6 +22,12 @@ const getNumberColor = (num) => {
   if (num === 0) return 'green';
   return RED_NUMBERS.includes(num) ? 'red' : 'black';
 };
+
+// Wheel dimensions - must match CSS .wheel-container (450px)
+const WHEEL_SIZE = 450;
+const WHEEL_CENTER = WHEEL_SIZE / 2; // 225px
+const BALL_TRACK_RADIUS = 210; // Where ball travels during spin (outer track)
+const POCKET_RADIUS = 200; // Where ball settles - aligned with outer ring numbers
 
 // Bet types and their payouts
 const BET_TYPES = {
@@ -53,6 +59,15 @@ function RoulettePage() {
   const [history, setHistory] = useState([]);
   const [wheelRotation, setWheelRotation] = useState(0);
   const wheelRef = useRef(null);
+
+  // Ball physics state
+  const [ballPosition, setBallPosition] = useState({ x: WHEEL_CENTER, y: WHEEL_CENTER - BALL_TRACK_RADIUS });
+  const [ballVisible, setBallVisible] = useState(false);
+  const ballAngleRef = useRef(0);
+  const ballSpeedRef = useRef(0);
+  const ballRadiusRef = useRef(BALL_TRACK_RADIUS);
+  const animationRef = useRef(null);
+  const targetNumberRef = useRef(null);
 
   // Current balance based on mode
   const currentBalance = isDemoMode ? demoBalance : realTickets;
@@ -136,6 +151,78 @@ function RoulettePage() {
     return selectedBets.reduce((sum, bet) => sum + bet.amount, 0);
   };
 
+  // Animate ball - spins clockwise, slows gradually, lands on winning number
+  const animateBall = useCallback((landingAngle, duration, onComplete) => {
+    // Convert landing angle to radians (CSS: 0=top, clockwise; Math: 0=right, counter-clockwise)
+    const targetAngleRad = (landingAngle - 90) * (Math.PI / 180);
+
+    const startTime = performance.now();
+
+    // Ball spins clockwise (negative direction in math coordinates)
+    // Start from a random position and calculate total rotation to land on target
+    const fullSpins = 5 + Math.floor(Math.random() * 3); // 5-7 full rotations
+    const startAngle = targetAngleRad + (fullSpins * Math.PI * 2); // Start ahead, spin down to target
+    const totalRotation = fullSpins * Math.PI * 2; // Total radians to travel
+
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Smooth deceleration - cubic ease out
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+
+      // Current angle - starts at startAngle, ends at targetAngleRad
+      // Ball moves clockwise (decreasing angle in math coords)
+      const currentAngle = startAngle - (totalRotation * easeOut);
+
+      // Radius drops gradually in the last 35% of animation
+      let currentRadius;
+      if (progress < 0.65) {
+        currentRadius = BALL_TRACK_RADIUS;
+      } else {
+        const dropProgress = (progress - 0.65) / 0.35;
+        const dropEase = Math.pow(dropProgress, 1.5);
+        currentRadius = BALL_TRACK_RADIUS - (BALL_TRACK_RADIUS - POCKET_RADIUS) * dropEase;
+      }
+
+      // Add subtle wobble in the last 20% as ball settles
+      let wobble = 0;
+      if (progress > 0.8) {
+        const wobbleProgress = (progress - 0.8) / 0.2;
+        const decay = 1 - wobbleProgress;
+        wobble = Math.sin(wobbleProgress * 8 * Math.PI) * decay * 0.03;
+      }
+
+      const finalAngle = currentAngle + wobble;
+      const finalX = WHEEL_CENTER + Math.cos(finalAngle) * currentRadius;
+      const finalY = WHEEL_CENTER + Math.sin(finalAngle) * currentRadius;
+
+      setBallPosition({ x: finalX, y: finalY });
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        // Ensure exact final position
+        setBallPosition({
+          x: WHEEL_CENTER + Math.cos(targetAngleRad) * POCKET_RADIUS,
+          y: WHEEL_CENTER + Math.sin(targetAngleRad) * POCKET_RADIUS
+        });
+        onComplete();
+      }
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+  }, []);
+
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
   // Spin the wheel
   const spin = async () => {
     if (spinning || selectedBets.length === 0) return;
@@ -164,16 +251,30 @@ function RoulettePage() {
 
     setSpinning(true);
     setResult(null);
+    setBallVisible(true);
 
+    // Get winning number (will come from blockchain in production)
     const resultNumber = Math.floor(Math.random() * 37);
-    const resultIndex = WHEEL_NUMBERS.indexOf(resultNumber);
-    const degreesPerNumber = 360 / 37;
+    targetNumberRef.current = resultNumber;
+
+    // Find where this number is on the STATIC outer ring
+    // Numbers are positioned at i * (360/37) degrees in CSS
+    const winIndex = WHEEL_NUMBERS.indexOf(resultNumber);
+    const degreesPerSegment = 360 / 37;
+    const winningAngle = winIndex * degreesPerSegment;
+
+    // Animation duration - slower for more realistic feel
+    const spinDuration = 7000;
+
+    // Inner wheel spins randomly (just visual, doesn't affect ball position)
     const fullSpins = 5 + Math.floor(Math.random() * 3);
-    const targetDegrees = fullSpins * 360 + (360 - resultIndex * degreesPerNumber);
+    const randomExtra = Math.random() * 360;
+    setWheelRotation(prev => prev + fullSpins * 360 + randomExtra);
 
-    setWheelRotation(prev => prev + targetDegrees);
-
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    // Ball lands at the winning number's FIXED position on the static outer ring
+    await new Promise(resolve => {
+      animateBall(winningAngle, spinDuration, resolve);
+    });
 
     let totalWinnings = 0;
     const betResults = selectedBets.map(bet => {
@@ -192,12 +293,16 @@ function RoulettePage() {
       }
     }
 
+    // Check if any bet won
+    const anyWin = betResults.some(b => b.won);
+
     setResult({
       number: resultNumber,
       color: getNumberColor(resultNumber),
       betResults,
       totalWinnings,
-      netProfit: totalWinnings - totalBet
+      netProfit: totalWinnings - totalBet,
+      anyWin
     });
 
     setHistory(prev => [{ number: resultNumber, color: getNumberColor(resultNumber) }, ...prev.slice(0, 19)]);
@@ -285,18 +390,31 @@ function RoulettePage() {
               ref={wheelRef}
               style={{ transform: `rotate(${wheelRotation}deg)` }}
             >
-              {WHEEL_NUMBERS.map((num, i) => (
-                <div
-                  key={num}
-                  className={`wheel-number ${getNumberColor(num)}`}
-                  style={{
-                    transform: `rotate(${i * (360 / 37)}deg) translateY(-140px)`
-                  }}
-                >
-                  {num}
-                </div>
-              ))}
+              {WHEEL_NUMBERS.map((num, i) => {
+                const angle = i * (360 / 37);
+                return (
+                  <div
+                    key={num}
+                    className={`wheel-segment ${getNumberColor(num)}`}
+                    style={{
+                      transform: `rotate(${angle}deg)`
+                    }}
+                  >
+                    <span className="segment-number">{num}</span>
+                  </div>
+                );
+              })}
             </div>
+            {/* Ball - always visible during and after spin */}
+            {ballVisible && (
+              <div
+                className={`roulette-ball-animated ${!spinning && result ? 'settled' : ''}`}
+                style={{
+                  left: ballPosition.x - 8,
+                  top: ballPosition.y - 8
+                }}
+              />
+            )}
             <div className="wheel-center">
               {result ? (
                 <div className={`result-display ${result.color}`}>
@@ -311,11 +429,14 @@ function RoulettePage() {
           {/* Result & History Panel */}
           <div className="wheel-info-panel">
             {result ? (
-              <div className={`result-card ${result.netProfit > 0 ? 'win' : 'lose'}`}>
-                <div className="result-title">{result.netProfit > 0 ? '🎉 Winner!' : 'No luck'}</div>
+              <div className={`result-card ${result.anyWin ? 'win' : 'lose'}`}>
+                <div className="result-title">{result.anyWin ? '🎉 Winner!' : 'No luck'}</div>
                 <div className={`result-number-large ${result.color}`}>{result.number}</div>
-                {result.netProfit > 0 && (
-                  <div className="result-winnings">+{result.totalWinnings.toFixed(0)} tickets</div>
+                {result.anyWin && (
+                  <div className="result-winnings">
+                    +{result.totalWinnings.toFixed(0)} tickets
+                    {result.netProfit === 0 && <span className="break-even"> (break even)</span>}
+                  </div>
                 )}
               </div>
             ) : (
@@ -345,12 +466,25 @@ function RoulettePage() {
 
       {/* Betting Section - Horizontal Layout */}
       <div className="roulette-betting-section">
-        {/* Controls Bar */}
-        <div className="betting-controls">
+        {/* Top Row: Balance + Placed Bets + Chip Selector */}
+        <div className="betting-controls-top">
           <div className="balance-display">
             <span className="balance-label">{isDemoMode ? 'Demo Balance' : 'Ticket Balance'}</span>
             <span className="balance-value" style={isDemoMode ? { color: '#c4b5fd' } : {}}>{currentBalance.toLocaleString()} tickets</span>
           </div>
+
+          {/* Placed Bets - inline */}
+          {selectedBets.length > 0 && (
+            <div className="placed-bets-inline">
+              {selectedBets.map((bet, i) => (
+                <span key={i} className="bet-tag">
+                  {BET_TYPES[bet.type].name}{bet.number !== null ? ` (${bet.number})` : ''}: {bet.amount}
+                  <button onClick={() => removeBet(i)} disabled={spinning}>×</button>
+                </span>
+              ))}
+              <button className="btn-clear-small" onClick={clearBets} disabled={spinning}>Clear</button>
+            </div>
+          )}
 
           <div className="chip-selector">
             <span className="chip-label">Chip:</span>
@@ -365,15 +499,16 @@ function RoulettePage() {
               </button>
             ))}
           </div>
-
-          <button
-            className="btn btn-primary btn-spin"
-            onClick={spin}
-            disabled={spinning || selectedBets.length === 0 || !canPlay}
-          >
-            {spinning ? 'Spinning...' : `SPIN (${getTotalBet()} tickets = $${(getTotalBet() * 0.10).toFixed(2)})`}
-          </button>
         </div>
+
+        {/* Spin Button - Full Width */}
+        <button
+          className="btn btn-primary btn-spin btn-spin-full"
+          onClick={spin}
+          disabled={spinning || selectedBets.length === 0 || !canPlay}
+        >
+          {spinning ? 'Spinning...' : `SPIN (${getTotalBet()} tickets = $${(getTotalBet() * 0.10).toFixed(2)})`}
+        </button>
 
         {/* Horizontal Betting Table */}
         <div className="betting-table-horizontal">
@@ -419,20 +554,6 @@ function RoulettePage() {
           </div>
         </div>
 
-        {/* Current Bets */}
-        {selectedBets.length > 0 && (
-          <div className="current-bets-bar">
-            <div className="bets-list">
-              {selectedBets.map((bet, i) => (
-                <span key={i} className="bet-tag">
-                  {BET_TYPES[bet.type].name}{bet.number !== null ? ` (${bet.number})` : ''}: {bet.amount}
-                  <button onClick={() => removeBet(i)} disabled={spinning}>×</button>
-                </span>
-              ))}
-            </div>
-            <button className="btn btn-outline" onClick={clearBets} disabled={spinning}>Clear</button>
-          </div>
-        )}
       </div>
 
       {/* How to Play */}

@@ -265,17 +265,21 @@ function PlinkoPage() {
     );
     Matter.Composite.add(engine.world, [leftWall, rightWall]);
 
-    // Create sensor at bottom
+    // Create sensor at bottom - must have PIN_CATEGORY so ball can detect it
     const sensor = Matter.Bodies.rectangle(
       CANVAS.WIDTH / 2,
-      CANVAS.HEIGHT,
+      CANVAS.HEIGHT - 30,
       CANVAS.WIDTH,
-      10,
+      20,
       {
         isSensor: true,
         isStatic: true,
         render: { visible: false },
-        label: 'sensor'
+        label: 'sensor',
+        collisionFilter: {
+          category: PIN_CATEGORY,
+          mask: BALL_CATEGORY
+        }
       }
     );
     Matter.Composite.add(engine.world, sensor);
@@ -291,6 +295,23 @@ function PlinkoPage() {
       });
     });
 
+    // Fallback: position-based detection if collision doesn't trigger
+    let ballDetected = false;
+    Matter.Events.on(engine, 'afterUpdate', () => {
+      if (ballDetected) return;
+      const bodies = Matter.Composite.allBodies(engine.world);
+      const ball = bodies.find(b => b.label === 'ball');
+      if (ball && ball.position.y > CANVAS.HEIGHT - 60) {
+        ballDetected = true;
+        console.log('Fallback detection triggered at y:', ball.position.y);
+        if (handleBallEnterBinRef.current) {
+          handleBallEnterBinRef.current(ball);
+        }
+        // Reset flag after a delay so next ball can be detected
+        setTimeout(() => { ballDetected = false; }, 1000);
+      }
+    });
+
     Matter.Render.run(render);
     Matter.Runner.run(runner, engine);
   }, [rows, getPinDistanceX, getPinRadius]);
@@ -303,24 +324,27 @@ function PlinkoPage() {
     // Use the same method as reference: find the last pin whose x is less than ball x
     const physicsSlot = lastRowXCoords.findLastIndex((pinX) => pinX < ball.position.x);
 
-    // Use contract's target slot for the result (provably fair)
-    // But show where physics actually landed for visual accuracy
+    // targetSlot can be: null (free test), 'demo_bet', 'real_bet', or a number (contract result)
     const targetSlot = targetSlotRef.current;
-    const finalSlot = targetSlot !== null ? targetSlot : physicsSlot;
 
-    console.log('Ball landed - Physics slot:', physicsSlot, 'Contract slot:', targetSlot, 'Final:', finalSlot);
+    // For slot number: use physics for demo/real bets, contract result for blockchain bets
+    const isLocalBet = targetSlot === null || targetSlot === 'demo_bet' || targetSlot === 'real_bet';
+    const finalSlot = isLocalBet ? physicsSlot : targetSlot;
 
-    if (finalSlot >= 0 && finalSlot < lastRowXCoords.length - 1) {
-      // Snap ball to the target slot position if we have one from contract
-      if (targetSlot !== null && lastRowXCoords[targetSlot + 1]) {
-        const slotCenterX = (lastRowXCoords[targetSlot] + lastRowXCoords[targetSlot + 1]) / 2;
+    console.log('Ball landed - Physics slot:', physicsSlot, 'Target type:', targetSlot, 'Final slot:', finalSlot);
+
+    if (finalSlot >= 0 && finalSlot < lastRowXCoords.length) {
+      // Snap ball to the slot center for visual clarity
+      if (lastRowXCoords[finalSlot] !== undefined) {
+        const nextPinX = lastRowXCoords[finalSlot + 1] || (lastRowXCoords[finalSlot] + 50);
+        const slotCenterX = (lastRowXCoords[finalSlot] + nextPinX) / 2;
         Matter.Body.setPosition(ball, { x: slotCenterX, y: ball.position.y });
       }
 
       setLandingSlot(finalSlot);
 
-      // For test mode, demo bet mode, or real bet mode, show result
-      if (targetSlot === null || targetSlot === 'demo_bet' || targetSlot === 'real_bet') {
+      // Calculate and show result for all local bets
+      if (isLocalBet) {
         const mult = MULTIPLIERS[rows]?.[risk]?.[finalSlot] || 1;
         const payout = betAmount * mult;
         const profit = payout - betAmount;
@@ -348,6 +372,8 @@ function PlinkoPage() {
 
       setIsProcessing(false);
       setGameState('complete');
+    } else {
+      console.error('Invalid slot calculated:', finalSlot, 'from ball position:', ball.position.x);
     }
 
     // Remove ball after a short delay

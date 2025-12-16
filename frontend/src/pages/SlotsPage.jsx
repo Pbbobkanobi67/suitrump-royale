@@ -9,12 +9,21 @@ import { CURRENT_NETWORK, getContract } from '../config/sui-config';
 const SLOTS_CONTRACT = getContract('slots');
 
 const SYMBOLS = {
-  0: { name: 'SUIT', emoji: '🔵', color: '#3B82F6' },
+  0: { name: 'SUIT', emoji: null, image: '/suitrump-mascot.png', color: '#3B82F6' },
   1: { name: 'DIAMOND', emoji: '💎', color: '#A855F7' },
   2: { name: 'FIRE', emoji: '🔥', color: '#EF4444' },
   3: { name: 'STAR', emoji: '⭐', color: '#FBBF24' },
   4: { name: 'LUCKY', emoji: '🍀', color: '#22C55E' },
   5: { name: 'SEVEN', emoji: '🎰', color: '#EC4899' }
+};
+
+// Helper to render symbol (image or emoji)
+const renderSymbol = (symbolIndex, className = '') => {
+  const symbol = SYMBOLS[symbolIndex];
+  if (symbol?.image) {
+    return <img src={symbol.image} alt={symbol.name} className={`symbol-img ${className}`} />;
+  }
+  return symbol?.emoji || '?';
 };
 
 const BET_PRESETS = [1, 5, 10, 25, 50, 100, 500];
@@ -59,7 +68,14 @@ const calculateSlotPayout = (symbols, betAmount) => {
 function SlotsPage() {
   // Use unified game wallet hook
   const gameWallet = useGameWallet();
-  const { isDemoMode, demoBalance, setDemoBalance } = useDemoContext();
+  const {
+    isDemoMode,
+    demoBalance,
+    setDemoBalance,
+    getTickets,
+    addTickets,
+    deductTickets
+  } = useDemoContext();
   const account = useCurrentAccount();
 
   const [betAmount, setBetAmount] = useState(10);
@@ -77,8 +93,10 @@ function SlotsPage() {
   const [demoStats, setDemoStats] = useState({ totalSpins: 0, totalWagered: 0, totalWon: 0, biggestWin: 0 });
   const [history, setHistory] = useState([]);
 
-  // Get current balance based on mode
-  const currentBalance = isDemoMode ? demoBalance : gameWallet.balance.tickets;
+  // Get current balance based on mode - directly use wallet address for real mode
+  const walletAddress = account?.address;
+  const realTicketBalance = walletAddress ? getTickets(walletAddress) : 0;
+  const currentBalance = isDemoMode ? demoBalance : realTicketBalance;
   const isWalletConnected = !!account;
 
   // Ref to track spinning interval (defined early so it's available in all effects)
@@ -93,6 +111,12 @@ function SlotsPage() {
   }, []);
 
   const stopSpinning = useCallback((finalSymbols) => {
+    // FIRST: Stop the random spinning interval immediately
+    if (spinIntervalRef.current) {
+      clearInterval(spinIntervalRef.current);
+      spinIntervalRef.current = null;
+    }
+
     // Stop reels one by one with delays for dramatic effect
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -106,10 +130,6 @@ function SlotsPage() {
       setTimeout(() => {
         setReels(finalSymbols);
         setAnimatingReels([false, false, false]);
-        if (spinIntervalRef.current) {
-          clearInterval(spinIntervalRef.current);
-          spinIntervalRef.current = null;
-        }
         resolve();
       }, 900);
     });
@@ -147,13 +167,20 @@ function SlotsPage() {
 
   // Real mode spin handler
   const handleSpin = async () => {
-    if (!isWalletConnected) {
+    if (!isWalletConnected || !walletAddress) {
       setError('Please connect your wallet to play');
       return;
     }
 
-    if (!gameWallet.canAfford(betAmount)) {
+    if (currentBalance < betAmount) {
       setError('Insufficient ticket balance! Buy tickets at the Cashier.');
+      return;
+    }
+
+    // Deduct bet amount FIRST
+    const deducted = deductTickets(walletAddress, betAmount);
+    if (!deducted) {
+      setError('Failed to deduct tickets');
       return;
     }
 
@@ -171,29 +198,12 @@ function SlotsPage() {
     const finalSymbols = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
     const winAmount = calculateSlotPayout(finalSymbols, betAmount);
 
-    // Use placeRealBet to handle ticket deduction and winnings
-    const result = gameWallet.placeRealBet('slots', betAmount, () => ({
-      won: winAmount > 0,
-      winAmount: winAmount,
-      symbols: finalSymbols
-    }));
-
-    if (!result.success) {
-      setError(result.error);
-      setIsSpinning(false);
-      if (spinIntervalRef.current) {
-        clearInterval(spinIntervalRef.current);
-        spinIntervalRef.current = null;
-      }
-      setAnimatingReels([false, false, false]);
-      return;
-    }
-
     // Stop spinning with dramatic effect
     await stopSpinning(finalSymbols);
 
-    // Update UI
+    // Add winnings if won
     if (winAmount > 0) {
+      addTickets(walletAddress, winAmount);
       setLastWin(winAmount);
       setHistory(prev => [{
         time: new Date().toLocaleTimeString(),
@@ -202,6 +212,14 @@ function SlotsPage() {
         win: winAmount,
         won: true
       }, ...prev.slice(0, 9)]);
+
+      // Show result
+      const isJackpot = finalSymbols[0] === 0 && finalSymbols[1] === 0 && finalSymbols[2] === 0;
+      setShowResult({
+        type: isJackpot ? 'jackpot' : 'win',
+        amount: winAmount,
+        symbols: finalSymbols
+      });
     } else {
       setHistory(prev => [{
         time: new Date().toLocaleTimeString(),
@@ -210,6 +228,12 @@ function SlotsPage() {
         win: 0,
         won: false
       }, ...prev.slice(0, 9)]);
+
+      setShowResult({
+        type: 'loss',
+        amount: betAmount,
+        symbols: finalSymbols
+      });
     }
 
     setIsSpinning(false);
@@ -353,7 +377,7 @@ function SlotsPage() {
                 <div className="result-banner jackpot-banner">🎰 JACKPOT! 🎰</div>
                 <div className="result-symbols">
                   {showResult.symbols.map((s, i) => (
-                    <span key={i} className="result-symbol jackpot-symbol">{SYMBOLS[s]?.emoji}</span>
+                    <span key={i} className="result-symbol jackpot-symbol">{renderSymbol(s)}</span>
                   ))}
                 </div>
                 <div className="result-amount jackpot-amount">+{showResult.amount.toLocaleString()} tickets</div>
@@ -365,7 +389,7 @@ function SlotsPage() {
                 <div className="result-banner win-banner">🎉 WINNER! 🎉</div>
                 <div className="result-symbols">
                   {showResult.symbols.map((s, i) => (
-                    <span key={i} className="result-symbol">{SYMBOLS[s]?.emoji}</span>
+                    <span key={i} className="result-symbol">{renderSymbol(s)}</span>
                   ))}
                 </div>
                 <div className="result-amount win-amount">+{showResult.amount.toLocaleString()} tickets</div>
@@ -376,7 +400,7 @@ function SlotsPage() {
                 <div className="result-banner loss-banner">No Match</div>
                 <div className="result-symbols">
                   {showResult.symbols.map((s, i) => (
-                    <span key={i} className="result-symbol">{SYMBOLS[s]?.emoji}</span>
+                    <span key={i} className="result-symbol">{renderSymbol(s)}</span>
                   ))}
                 </div>
                 <div className="result-amount loss-amount">-{showResult.amount} tickets</div>
@@ -417,7 +441,7 @@ function SlotsPage() {
           <div className="stat-box jackpot">
             <span className="stat-label">Jackpot Pool</span>
             <span className="stat-value">{jackpotPool} tickets</span>
-            <span className="jackpot-hint">🔵🔵🔵 TO WIN</span>
+            <span className="jackpot-hint"><img src="/suitrump-mascot.png" alt="SUIT" className="jackpot-hint-img" /><img src="/suitrump-mascot.png" alt="SUIT" className="jackpot-hint-img" /><img src="/suitrump-mascot.png" alt="SUIT" className="jackpot-hint-img" /> TO WIN</span>
           </div>
         </div>
       )}
@@ -428,7 +452,7 @@ function SlotsPage() {
             {reels.map((symbol, i) => (
               <div key={i} className={`reel ${animatingReels[i] ? 'spinning' : ''}`}>
                 <div className="reel-symbol" style={{ color: SYMBOLS[symbol]?.color || '#fff' }}>
-                  {SYMBOLS[symbol]?.emoji || '?'}
+                  {renderSymbol(symbol)}
                 </div>
               </div>
             ))}
@@ -476,7 +500,7 @@ function SlotsPage() {
         <div className="info-panel">
           <h3>Payouts</h3>
           <div className="payout-list">
-            <div className="payout-row jackpot"><span>🔵🔵🔵</span><span>50x</span></div>
+            <div className="payout-row jackpot"><span className="payout-symbols"><img src="/suitrump-mascot.png" alt="SUIT" className="payout-img" /><img src="/suitrump-mascot.png" alt="SUIT" className="payout-img" /><img src="/suitrump-mascot.png" alt="SUIT" className="payout-img" /></span><span>50x</span></div>
             <div className="payout-row"><span>💎💎💎</span><span>25x</span></div>
             <div className="payout-row"><span>🎰🎰🎰</span><span>15x</span></div>
             <div className="payout-row"><span>🔥🔥🔥</span><span>10x</span></div>
@@ -499,7 +523,7 @@ function SlotsPage() {
         <div className="info-panel">
           <h3>With {betAmount} ticket bet</h3>
           <div className="potential-list">
-            <div className="potential-row jackpot"><span>🔵🔵🔵 Jackpot</span><span>{betAmount * 50} tickets</span></div>
+            <div className="potential-row jackpot"><span className="payout-symbols"><img src="/suitrump-mascot.png" alt="SUIT" className="payout-img" /><img src="/suitrump-mascot.png" alt="SUIT" className="payout-img" /><img src="/suitrump-mascot.png" alt="SUIT" className="payout-img" /> Jackpot</span><span>{betAmount * 50} tickets</span></div>
             <div className="potential-row"><span>💎💎💎 Diamond</span><span>{betAmount * 25} tickets</span></div>
             <div className="potential-row"><span>🎰🎰🎰 Seven</span><span>{betAmount * 15} tickets</span></div>
             <div className="potential-row"><span>2-Match</span><span>{betAmount * 1.5} tickets</span></div>
@@ -588,7 +612,11 @@ function SlotsPage() {
         .reel { width: 100px; height: 100px; background: linear-gradient(180deg, #0f172a, #1e293b); border-radius: 12px; border: 2px solid #2563eb; display: flex; align-items: center; justify-content: center; }
         .reel.spinning { animation: reelSpin 0.1s infinite; border-color: #3b82f6; box-shadow: 0 0 20px rgba(59,130,246,0.5); }
         @keyframes reelSpin { 0%,100% { transform: translateY(-2px); } 50% { transform: translateY(2px); } }
-        .reel-symbol { font-size: 3rem; text-shadow: 0 0 10px currentColor; }
+        .reel-symbol { font-size: 3rem; text-shadow: 0 0 10px currentColor; display: flex; align-items: center; justify-content: center; }
+        .symbol-img { width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)); }
+        .payout-img { width: 20px; height: 20px; object-fit: contain; vertical-align: middle; }
+        .payout-symbols { display: inline-flex; align-items: center; gap: 2px; }
+        .jackpot-hint-img { width: 14px; height: 14px; object-fit: contain; vertical-align: middle; }
         .payline-indicator { text-align: center; color: #fbbf24; font-size: 0.8rem; font-weight: 600; }
         .result-message { text-align: center; margin: 20px 0; font-size: 1.5rem; color: #94a3b8; min-height: 40px; }
         .bet-section { margin: 20px 0; text-align: center; }
@@ -677,6 +705,13 @@ function SlotsPage() {
         .result-symbol {
           font-size: 4rem;
           animation: symbolBounce 0.5s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .result-symbol .symbol-img {
+          width: 80px;
+          height: 80px;
         }
         .result-symbol:nth-child(1) { animation-delay: 0s; }
         .result-symbol:nth-child(2) { animation-delay: 0.1s; }
@@ -729,9 +764,11 @@ function SlotsPage() {
           .contract-stats { flex-direction: column; }
           .reel { width: 80px; height: 80px; }
           .reel-symbol { font-size: 2.5rem; }
+          .symbol-img { width: 50px; height: 50px; }
           .result-modal { padding: 25px; min-width: 280px; }
           .result-banner { font-size: 1.5rem; }
           .result-symbol { font-size: 3rem; }
+          .result-symbol .symbol-img { width: 60px; height: 60px; }
           .result-amount { font-size: 2rem; }
           .jackpot-amount { font-size: 2.25rem; }
         }

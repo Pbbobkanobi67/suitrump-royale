@@ -11,6 +11,7 @@
  * - Wallet connection status
  */
 
+import { useEffect } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { useDemoContext } from '../contexts/DemoContext';
@@ -32,7 +33,9 @@ export function useGameWallet() {
     setRealTickets,
     addTickets: contextAddTickets,
     deductTickets: contextDeductTickets,
-    connectedWallet
+    getTickets: contextGetTickets,
+    connectedWallet,
+    setConnectedWallet
   } = useDemoContext();
 
   // Sui wallet hooks
@@ -49,6 +52,21 @@ export function useGameWallet() {
   const isConnected = !!account?.address;
   const address = account?.address || null;
 
+  // Sync connected wallet address to DemoContext when Sui wallet connects
+  useEffect(() => {
+    if (account?.address && account.address !== connectedWallet) {
+      setConnectedWallet(account.address);
+    }
+  }, [account?.address, connectedWallet, setConnectedWallet]);
+
+  // Get tickets for the current wallet
+  const getTicketsForCurrentWallet = () => {
+    if (isDemoMode) return demoBalance;
+    const walletAddress = account?.address || connectedWallet;
+    if (!walletAddress) return 0;
+    return contextGetTickets(walletAddress);
+  };
+
   // Get the appropriate balance based on mode
   const getBalance = () => {
     if (isDemoMode) {
@@ -60,12 +78,14 @@ export function useGameWallet() {
       };
     }
 
-    // Real mode - tickets come from context (bought at cashier)
+    // Real mode - get tickets for the actual connected wallet
+    const ticketBalance = getTicketsForCurrentWallet();
+
     // wallet balance comes from blockchain
     return {
-      tickets: realTickets,
+      tickets: ticketBalance,
       wallet: Number(suitrumpBalance.data?.formatted || 0),
-      formatted: realTickets.toLocaleString(),
+      formatted: ticketBalance.toLocaleString(),
       walletFormatted: suitrumpBalance.data?.formatted || '0',
       raw: suitrumpBalance.data?.balance || 0n,
       victory: {
@@ -183,6 +203,55 @@ export function useGameWallet() {
     return result;
   };
 
+  /**
+   * Place a bet for a game (handles ticket deduction and winnings)
+   * Works in both demo and real mode
+   * @param {string} game - Game name (for logging)
+   * @param {number} betAmount - Amount to bet in tickets
+   * @param {Function} gameLogic - Function that returns { won: boolean, winAmount: number, ...extraData }
+   * @returns {{ success: boolean, error?: string, result?: object }}
+   */
+  const placeRealBet = (game, betAmount, gameLogic) => {
+    try {
+      // Use the actual connected wallet address
+      const walletAddress = account?.address || connectedWallet;
+
+      // Check if can afford
+      if (!canAfford(betAmount)) {
+        return { success: false, error: 'Insufficient ticket balance' };
+      }
+
+      // Deduct bet amount
+      if (isDemoMode) {
+        setDemoBalance(prev => Math.max(0, prev - betAmount));
+      } else if (walletAddress) {
+        const deducted = contextDeductTickets(walletAddress, betAmount);
+        if (!deducted) {
+          return { success: false, error: 'Failed to deduct tickets' };
+        }
+      } else {
+        return { success: false, error: 'Wallet not connected' };
+      }
+
+      // Run game logic
+      const result = gameLogic();
+
+      // Add winnings if won
+      if (result.won && result.winAmount > 0) {
+        if (isDemoMode) {
+          setDemoBalance(prev => prev + result.winAmount);
+        } else if (walletAddress) {
+          contextAddTickets(walletAddress, result.winAmount);
+        }
+      }
+
+      return { success: true, result };
+    } catch (error) {
+      console.error(`[${game}] Bet error:`, error);
+      return { success: false, error: error.message || 'Unknown error' };
+    }
+  };
+
   return {
     // Mode
     isDemoMode,
@@ -219,6 +288,9 @@ export function useGameWallet() {
       }
       return false;
     },
+
+    // Game betting (unified for demo/real)
+    placeRealBet,
 
     // Real mode actions
     setRealTickets,

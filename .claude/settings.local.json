@@ -40,7 +40,8 @@
       "Bash(pushd \"D:\\Apps\\sui-casino\\frontend\")",
       "Bash(pushd \"D:\\Apps\\sui-casino\\move\")",
       "Bash(gh auth status:*)",
-      "Bash(gh repo create:*)"
+      "Bash(gh repo create:*)",
+      "Bash(git remote add:*)"
     ]
   }
 }

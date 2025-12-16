@@ -283,13 +283,14 @@ function AdminPage() {
     plinko: { balance: '0', totalDrops: 0, totalWagered: '0', totalPaidOut: '0', isPaused: false },
     keno: { balance: '0', totalGames: 0, totalWagered: '0', totalPaidOut: '0', isPaused: false },
     progressive: { balance: '0', jackpotPool: '0', totalRolls: 0, totalWagered: '0', isPaused: false },
-    raffle: { prizePool: '0', roundId: 1, totalTickets: 0, status: 0 }
+    raffle: { prizePool: '0', roundId: 1, totalTickets: 0, status: 0, roundDurationMs: 21600000 }
   });
 
   // Form states
   const [fundAmount, setFundAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [selectedGame, setSelectedGame] = useState('slots');
+  const [raffleDurationHours, setRaffleDurationHours] = useState(6); // Default 6 hours
 
   // Wallet settings (editable)
   const [walletSettings, setWalletSettings] = useState({
@@ -358,6 +359,7 @@ function AdminPage() {
               isPaused: fields.is_paused || false
             };
           } else if (config.key === 'raffle') {
+            const durationMs = Number(fields.round_duration_ms || 21600000);
             newStats[config.key] = {
               prizePool: formatSuit(fields.prize_pool || '0'),
               houseBalance: formatSuit(fields.house_balance || '0'),
@@ -365,8 +367,12 @@ function AdminPage() {
               totalTickets: Number(fields.total_tickets || 0),
               status: Number(fields.status || 0),
               totalRounds: Number(fields.total_rounds || 0),
-              totalDistributed: formatSuit(fields.total_distributed || '0')
+              totalDistributed: formatSuit(fields.total_distributed || '0'),
+              roundDurationMs: durationMs,
+              roundDurationHours: durationMs / (1000 * 60 * 60)
             };
+            // Update the form state with current value
+            setRaffleDurationHours(durationMs / (1000 * 60 * 60));
           } else {
             newStats[config.key] = {
               balance: formatSuit(fields.balance || '0'),
@@ -412,6 +418,44 @@ function AdminPage() {
   };
 
   const totals = calculateTotals();
+
+  // Set raffle round duration
+  const handleSetRaffleDuration = async () => {
+    if (!raffleDurationHours || raffleDurationHours <= 0) {
+      setMessage({ type: 'error', text: 'Please enter a valid duration' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const durationMs = Math.floor(raffleDurationHours * 60 * 60 * 1000); // Convert hours to ms
+      const SUITRUMP_TOKEN_TYPE = '0xe8fd4cdccd697947bdb84f357eadb626bafac3db769c228336ebcd1ad6ca9081::test_suitrump::TEST_SUITRUMP';
+
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${SUI_CONFIG.packageIds.raffle}::${MODULES.raffle}::set_round_duration`,
+        arguments: [
+          tx.object(SUI_CONFIG.games.raffle),
+          tx.pure.u64(durationMs),
+          tx.object(SUI_CONFIG.adminCaps.raffle)
+        ],
+        typeArguments: [SUITRUMP_TOKEN_TYPE]
+      });
+
+      await signAndExecute({
+        transaction: tx,
+        options: { showEffects: true }
+      });
+
+      setMessage({ type: 'success', text: `Raffle duration set to ${raffleDurationHours} hours` });
+      await fetchAllStats();
+    } catch (err) {
+      console.error('Error setting raffle duration:', err);
+      setMessage({ type: 'error', text: err.message || 'Failed to set raffle duration' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Fund house
   const handleFundHouse = async (gameName) => {
@@ -1053,20 +1097,44 @@ function AdminPage() {
 
         <div className="admin-controls-row">
           <div className="control-group">
-            <label>Bonus Multiplier</label>
+            <label>Round Duration (Hours)</label>
             <div className="input-row">
               <input
                 type="number"
-                placeholder="Multiplier (e.g., 2)"
-                min="1"
-                max="10"
+                placeholder="Duration in hours"
+                min="0.5"
+                max="168"
+                step="0.5"
+                value={raffleDurationHours}
+                onChange={(e) => setRaffleDurationHours(parseFloat(e.target.value))}
               />
-              <button className="btn btn-primary" disabled={loading}>
-                Set Bonus
+              <button
+                className="btn btn-primary"
+                disabled={loading || gameStats.raffle.status !== 0}
+                onClick={handleSetRaffleDuration}
+              >
+                {loading ? 'Setting...' : 'Set Duration'}
               </button>
             </div>
+            <span className="input-hint">
+              Current: {gameStats.raffle.roundDurationHours?.toFixed(1) || 6} hours
+              {gameStats.raffle.status !== 0 && ' (can only change during WAITING status)'}
+            </span>
           </div>
 
+          <div className="control-group">
+            <label>Quick Duration Presets</label>
+            <div className="button-row">
+              <button className="btn btn-secondary" onClick={() => setRaffleDurationHours(1)}>1h</button>
+              <button className="btn btn-secondary" onClick={() => setRaffleDurationHours(6)}>6h</button>
+              <button className="btn btn-secondary" onClick={() => setRaffleDurationHours(12)}>12h</button>
+              <button className="btn btn-secondary" onClick={() => setRaffleDurationHours(24)}>24h</button>
+              <button className="btn btn-secondary" onClick={() => setRaffleDurationHours(48)}>48h</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="admin-controls-row">
           <div className="control-group">
             <label>Raffle Actions</label>
             <div className="button-row">
@@ -1081,7 +1149,7 @@ function AdminPage() {
         </div>
 
         <div className="raffle-info">
-          <p><strong>Ticket Price:</strong> 5 SUIT | <strong>House Edge:</strong> 6% | <strong>Draw:</strong> When target reached</p>
+          <p><strong>Ticket Price:</strong> 1 Ticket ($0.10) | <strong>House Edge:</strong> 6% | <strong>Draw:</strong> After timer expires</p>
         </div>
       </div>
 

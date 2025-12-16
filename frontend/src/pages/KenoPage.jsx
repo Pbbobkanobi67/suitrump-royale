@@ -188,8 +188,8 @@ function KenoPage() {
     return 'default';
   };
 
-  // Check if number should show whale mascot (when drawn)
-  const isRevealed = (num) => drawnNumbers.has(num);
+  // Check if number is a match (selected AND drawn) - shows Trump mascot
+  const isMatch = (num) => selectedNumbers.has(num) && drawnNumbers.has(num);
 
   return (
     <div className="keno-page">
@@ -266,7 +266,7 @@ function KenoPage() {
                 onClick={() => toggleNumber(num)}
                 disabled={isDrawing}
               >
-                {isRevealed(num) ? (
+                {isMatch(num) ? (
                   <img
                     src="/suitrump-mascot.png"
                     alt="SUIT"

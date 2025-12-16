@@ -2,7 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import { useDemoContext } from '../contexts/DemoContext';
 import { useGameWallet } from '../hooks/useGameWallet';
-import { CURRENT_NETWORK, getContract } from '../config/sui-config';
+import { CURRENT_NETWORK, getContract, formatTickets } from '../config/sui-config';
+
+// Helper to format ticket count with USD value
+const formatTicketsWithUSD = (tickets) => {
+  const num = parseFloat(tickets) || 0;
+  const usd = (num * 0.10).toFixed(2);
+  return { count: num.toLocaleString(), usd: `$${usd}` };
+};
 
 // Get raffle contract address
 const RAFFLE_CONTRACT = getContract('raffle');
@@ -18,7 +25,7 @@ function RafflePage({ raffle }) {
   const [localTimeRemaining, setLocalTimeRemaining] = useState(0);
   const lastBlockchainTime = useRef(null);
 
-  const { roundInfo, userTickets, loading, error } = raffle;
+  const { roundInfo, escrowInfo, userTickets, loading, error, ROUND_STATUS } = raffle;
 
   // Sync local countdown with blockchain time and tick locally every second
   useEffect(() => {
@@ -84,7 +91,11 @@ function RafflePage({ raffle }) {
   const handleBuyTickets = async (e) => {
     e.preventDefault();
     if (!ticketAmount) return;
-    await raffle.buyTickets(ticketAmount);
+    await raffle.buyTickets(parseInt(ticketAmount), roundInfo?.status);
+  };
+
+  const handleWithdrawEscrow = async () => {
+    await raffle.withdrawEscrow();
   };
 
   const formatTime = (seconds) => {
@@ -96,13 +107,18 @@ function RafflePage({ raffle }) {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Waiting': return 'status-waiting';
+      case 'Waiting for Players': return 'status-waiting';
       case 'Active': return 'status-active';
-      case 'Drawing': return 'status-drawing';
+      case 'Drawing...': return 'status-drawing';
       case 'Complete': return 'status-complete';
       default: return '';
     }
   };
+
+  // Helper to check if we're in escrow/waiting phase
+  const isWaitingPhase = roundInfo?.status === ROUND_STATUS?.WAITING;
+  const isActivePhase = roundInfo?.status === ROUND_STATUS?.ACTIVE;
+  const userEscrowTickets = escrowInfo?.userTickets || 0;
 
   // Demo mode message for raffle
   if (isDemoMode) {
@@ -254,71 +270,94 @@ function RafflePage({ raffle }) {
         </div>
       )}
 
-      {/* Draw Controls - Moved to top, highlighted when action needed */}
-      <div className={`card draw-controls-card ${drawStatus.canRequest || drawStatus.canExecute ? 'action-required' : ''}`}>
-        <h3>🎯 Draw Controls</h3>
-
-        {roundInfo?.status === 'Waiting' && (
-          <p className="draw-info">
-            ⏳ Waiting for at least 2 participants to start the countdown...
+      {/* Escrow Info - Show during waiting phase */}
+      {isWaitingPhase && (
+        <div className="card escrow-info-card">
+          <h3>🔒 Escrow Phase</h3>
+          <p className="escrow-desc">
+            Funds are held in escrow until 2+ players join. Round starts automatically when the second player enters!
           </p>
-        )}
 
-        {roundInfo?.status === 'Active' && localTimeRemaining > 0 && (
-          <p className="draw-info">
-            ⏱️ Round is active. Draw can be requested after the timer ends.
-          </p>
-        )}
-
-        {drawStatus.canRequest && (
-          <div className="draw-action action-highlight">
-            <p className="draw-info success">🚨 Round ended! Someone must trigger the draw!</p>
-            <button
-              className="btn btn-primary btn-large pulse-animation"
-              onClick={raffle.requestDraw}
-              disabled={loading}
-            >
-              {loading ? 'Processing...' : '🎲 Request Draw Now!'}
-            </button>
+          <div className="escrow-stats">
+            <div className="escrow-stat">
+              <span className="stat-label">Players Waiting</span>
+              <span className="stat-value">{escrowInfo?.participants || 0} / 2</span>
+            </div>
+            <div className="escrow-stat">
+              <span className="stat-label">Escrow Pool</span>
+              <span className="stat-value">
+                {formatTicketsWithUSD(escrowInfo?.totalPool || 0).count}
+                <span className="usd-sub">{formatTicketsWithUSD(escrowInfo?.totalPool || 0).usd}</span>
+              </span>
+            </div>
+            <div className="escrow-stat">
+              <span className="stat-label">Your Escrow Tickets</span>
+              <span className="stat-value highlight">
+                {formatTicketsWithUSD(userEscrowTickets).count}
+                <span className="usd-sub">{formatTicketsWithUSD(userEscrowTickets).usd}</span>
+              </span>
+            </div>
           </div>
-        )}
 
-        {roundInfo?.status === 'Drawing' && !drawStatus.canExecute && (
-          drawStatus.executeReason?.includes('expired') ? (
-            <div className="draw-action action-highlight">
-              <p className="draw-info warning">⚠️ Draw expired! The blockhash window passed. Admin must cancel and restart the round.</p>
+          {userEscrowTickets > 0 && (
+            <div className="escrow-withdraw-section">
+              <p className="withdraw-info">You can withdraw your escrow tickets anytime before round starts (100% refund, only gas fees)</p>
               <button
-                className="btn btn-warning btn-large"
-                onClick={raffle.cancelRound}
+                className="btn btn-warning"
+                onClick={handleWithdrawEscrow}
                 disabled={loading}
               >
-                {loading ? 'Processing...' : '🔄 Cancel Round & Refund All'}
+                {loading ? 'Processing...' : `Withdraw ${userEscrowTickets} Tickets (${formatTicketsWithUSD(userEscrowTickets).usd})`}
               </button>
-              <p className="draw-note">All participants will be refunded their SUIT tokens.</p>
             </div>
-          ) : (
-            <p className="draw-info">
-              ⏳ Draw requested. Waiting for blocks... {drawStatus.executeReason}
-            </p>
-          )
+          )}
+        </div>
+      )}
+
+      {/* Draw Controls - Moved to top, highlighted when action needed */}
+      <div className={`card draw-controls-card ${drawStatus.canRequest || drawStatus.canExecute ? 'action-required' : ''}`}>
+        <h3>🎯 Round Status</h3>
+
+        {isWaitingPhase && escrowInfo?.participants === 0 && (
+          <p className="draw-info">
+            🎟️ Be the first to enter the raffle! Your funds stay in escrow until a second player joins.
+          </p>
         )}
 
-        {drawStatus.canExecute && (
+        {isWaitingPhase && escrowInfo?.participants === 1 && (
+          <p className="draw-info">
+            ⏳ 1 player waiting in escrow. When you join, the 5-minute round starts automatically!
+          </p>
+        )}
+
+        {isActivePhase && localTimeRemaining > 0 && (
+          <p className="draw-info">
+            ⏱️ Round is LIVE! {roundInfo.totalTickets} tickets sold, {roundInfo.participants} participants. Draw after timer ends.
+          </p>
+        )}
+
+        {isActivePhase && localTimeRemaining <= 0 && roundInfo?.participants >= 2 && (
           <div className="draw-action action-highlight">
-            <p className="draw-info success">🎉 Ready to select winner!</p>
+            <p className="draw-info success">🚨 Round ended with {roundInfo.participants} participants! Someone must trigger the draw!</p>
             <button
-              className="btn btn-success btn-large pulse-animation"
-              onClick={raffle.executeDraw}
+              className="btn btn-primary btn-large pulse-animation"
+              onClick={raffle.drawWinner}
               disabled={loading}
             >
-              {loading ? 'Processing...' : '🏆 Execute Draw & Select Winner!'}
+              {loading ? 'Processing...' : '🎲 Draw Winner Now!'}
             </button>
           </div>
         )}
 
-        {!drawStatus.canRequest && !drawStatus.canExecute && roundInfo?.status !== 'Waiting' && roundInfo?.status !== 'Active' && (
+        {roundInfo?.statusText === 'Drawing...' && (
           <p className="draw-info">
-            No action required at this time.
+            ⏳ Drawing winner using on-chain randomness...
+          </p>
+        )}
+
+        {roundInfo?.statusText === 'Complete' && (
+          <p className="draw-info">
+            ✅ Round complete! Winner has been selected. Admin will start a new round soon.
           </p>
         )}
       </div>
@@ -326,20 +365,21 @@ function RafflePage({ raffle }) {
       {/* Round Info Card */}
       <div className="raffle-card">
         <div className="raffle-header">
-          <h2>Round #{roundInfo?.roundId || 0}</h2>
-          <span className={`raffle-status ${getStatusColor(roundInfo?.status)}`}>
-            {roundInfo?.status || 'Loading...'}
+          <h2>Round #{roundInfo?.roundId || 1}</h2>
+          <span className={`raffle-status ${getStatusColor(roundInfo?.statusText)}`}>
+            {roundInfo?.statusText || 'Active'}
           </span>
         </div>
 
         <div className="prize-pool">
           <span className="prize-label">Prize Pool</span>
           <span className="prize-value">
-            {parseFloat(roundInfo?.prizePool || 0).toLocaleString()} SUIT
+            {formatTicketsWithUSD(roundInfo?.totalTickets || 0).count} tickets
+            <span className="usd-value">({formatTicketsWithUSD(roundInfo?.totalTickets || 0).usd})</span>
           </span>
         </div>
 
-        {roundInfo?.status === 'Active' && localTimeRemaining > 0 && (
+        {isActivePhase && localTimeRemaining > 0 && (
           <div className="countdown-section">
             <span className="countdown-label">Time Remaining</span>
             <span className="countdown-value">{formatTime(localTimeRemaining)}</span>
@@ -349,15 +389,21 @@ function RafflePage({ raffle }) {
         <div className="raffle-stats">
           <div className="raffle-stat">
             <span className="stat-label">Participants</span>
-            <span className="stat-value">{roundInfo?.uniqueWallets || 0}</span>
+            <span className="stat-value">{roundInfo?.participants || 0}</span>
           </div>
           <div className="raffle-stat">
             <span className="stat-label">Total Tickets</span>
-            <span className="stat-value">{parseFloat(roundInfo?.totalTickets || 0).toLocaleString()}</span>
+            <span className="stat-value">
+              {formatTicketsWithUSD(roundInfo?.totalTickets || 0).count}
+              <span className="usd-sub">{formatTicketsWithUSD(roundInfo?.totalTickets || 0).usd}</span>
+            </span>
           </div>
           <div className="raffle-stat">
             <span className="stat-label">Your Tickets</span>
-            <span className="stat-value highlight">{parseFloat(userTickets || 0).toLocaleString()}</span>
+            <span className="stat-value highlight">
+              {formatTicketsWithUSD(userTickets || 0).count}
+              <span className="usd-sub">{formatTicketsWithUSD(userTickets || 0).usd}</span>
+            </span>
           </div>
         </div>
 
@@ -368,11 +414,16 @@ function RafflePage({ raffle }) {
         )}
       </div>
 
-      {/* Buy Tickets */}
-      {(roundInfo?.statusCode === 0 || roundInfo?.statusCode === 1) && (
-        <div className="card">
-          <h3>Buy Tickets</h3>
-          <p className="section-desc">1 SUIT = 1 Ticket (94% goes to prize pool)</p>
+      {/* Buy Tickets / Deposit to Escrow */}
+      {(isWaitingPhase || isActivePhase) && (
+        <div className="card blue-outline">
+          <h3>{isWaitingPhase ? 'Deposit to Escrow' : 'Buy More Tickets'}</h3>
+          <p className="section-desc">
+            {isWaitingPhase
+              ? '1 Ticket = $0.10. Held in escrow until round starts. 100% refundable!'
+              : '1 Ticket = $0.10 (94% goes to prize pool)'
+            }
+          </p>
 
           <form onSubmit={handleBuyTickets}>
             <div className="ticket-input-section">
@@ -380,17 +431,25 @@ function RafflePage({ raffle }) {
                 type="number"
                 value={ticketAmount}
                 onChange={(e) => setTicketAmount(e.target.value)}
-                placeholder="Amount (SUIT)"
-                min="5"
-                max="150"
+                placeholder="Number of Tickets"
+                min="1"
+                max="1000"
                 step="1"
               />
+              <div className="ticket-usd-preview">
+                {ticketAmount && parseInt(ticketAmount) > 0 && (
+                  <span className="usd-preview">= {formatTicketsWithUSD(ticketAmount).usd}</span>
+                )}
+              </div>
               <div className="quick-amounts">
+                <button type="button" onClick={() => setTicketAmount('1')}>1</button>
                 <button type="button" onClick={() => setTicketAmount('5')}>5</button>
                 <button type="button" onClick={() => setTicketAmount('10')}>10</button>
                 <button type="button" onClick={() => setTicketAmount('25')}>25</button>
                 <button type="button" onClick={() => setTicketAmount('50')}>50</button>
                 <button type="button" onClick={() => setTicketAmount('100')}>100</button>
+                <button type="button" onClick={() => setTicketAmount('500')}>500</button>
+                <button type="button" onClick={() => setTicketAmount('1000')}>1000</button>
               </div>
             </div>
 
@@ -399,24 +458,26 @@ function RafflePage({ raffle }) {
               className="btn btn-primary btn-large"
               disabled={loading || !ticketAmount}
             >
-              {loading ? 'Processing...' : `Buy ${ticketAmount} Tickets`}
+              {loading ? 'Processing...' : isWaitingPhase
+                ? `Deposit ${ticketAmount} Tickets (${formatTicketsWithUSD(ticketAmount).usd})`
+                : `Buy ${ticketAmount} Tickets (${formatTicketsWithUSD(ticketAmount).usd})`}
             </button>
           </form>
 
-          <p className="limit-info">Min: 5 SUIT | Max: 150 SUIT per round</p>
+          <p className="limit-info">Min: 1 ticket ($0.10) | Max: 1000 tickets ($100)</p>
         </div>
       )}
 
 
       {/* How It Works */}
-      <div className="card">
+      <div className="card blue-outline">
         <h3>How SUITRUMP Raffle Works</h3>
         <div className="how-it-works-list">
           <div className="step-item">
             <span className="step-num">1</span>
             <div>
               <strong>Buy Tickets</strong>
-              <p>Purchase tickets with SUIT tokens (5-150 per round)</p>
+              <p>Purchase tickets with SUIT tokens (1-1000 per transaction)</p>
             </div>
           </div>
           <div className="step-item">

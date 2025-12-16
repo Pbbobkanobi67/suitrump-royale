@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import Dice3D from '../components/DiceGame/Dice3D';
+import StaticDice3D from '../components/DiceGame/StaticDice3D';
 import { useDemoContext } from '../contexts/DemoContext';
 import { useGameWallet } from '../hooks/useGameWallet';
 import NeedTickets from '../components/NeedTickets';
@@ -442,8 +443,8 @@ function ProgressivePage({ progressive }) {
           {usesDemoMode ? (
             <div className="dice-display">
               {demoTargetDice.map((die, i) => (
-                <div key={i} className="dice-with-value">
-                  <Dice3D targetValue={die} size={100} topDown={true} />
+                <div key={`target-${i}`} className="dice-with-value">
+                  <StaticDice3D value={die} size={100} />
                   <span className="dice-value">{die}</span>
                 </div>
               ))}
@@ -451,19 +452,19 @@ function ProgressivePage({ progressive }) {
           ) : targetRevealed && progressive.targetDice ? (
             <div className="dice-display">
               <div className={`dice-with-value ${matchedTargetIndices.includes(0) ? 'matched' : ''}`}>
-                <Dice3D targetValue={progressive.targetDice.die1} size={100} topDown={true} />
+                <StaticDice3D value={progressive.targetDice.die1} size={100} />
                 <span className="dice-value">{progressive.targetDice.die1}</span>
               </div>
               <div className={`dice-with-value ${matchedTargetIndices.includes(1) ? 'matched' : ''}`}>
-                <Dice3D targetValue={progressive.targetDice.die2} size={100} topDown={true} />
+                <StaticDice3D value={progressive.targetDice.die2} size={100} />
                 <span className="dice-value">{progressive.targetDice.die2}</span>
               </div>
               <div className={`dice-with-value ${matchedTargetIndices.includes(2) ? 'matched' : ''}`}>
-                <Dice3D targetValue={progressive.targetDice.die3} size={100} topDown={true} />
+                <StaticDice3D value={progressive.targetDice.die3} size={100} />
                 <span className="dice-value">{progressive.targetDice.die3}</span>
               </div>
               <div className={`dice-with-value ${matchedTargetIndices.includes(3) ? 'matched' : ''}`}>
-                <Dice3D targetValue={progressive.targetDice.die4} size={100} topDown={true} />
+                <StaticDice3D value={progressive.targetDice.die4} size={100} />
                 <span className="dice-value">{progressive.targetDice.die4}</span>
               </div>
             </div>
