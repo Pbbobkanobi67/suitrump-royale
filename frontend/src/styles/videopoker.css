@@ -593,20 +593,20 @@
 /* Rules */
 .vp-rules {
   max-width: 700px;
-  margin: 30px auto;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 16px;
-  padding: 24px 30px;
+  margin: 20px auto;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 2px solid #2563eb;
+  border-radius: 12px;
+  padding: 16px 20px;
 }
 
 .vp-rules h3 {
   color: #60a5fa;
-  margin: 0 0 20px;
-  font-size: 14px;
+  margin: 0 0 12px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 3px;
+  letter-spacing: 2px;
   text-align: center;
 }
 
@@ -643,8 +643,12 @@
   margin: 20px auto;
   display: flex;
   justify-content: center;
-  gap: 40px;
+  gap: 30px;
   flex-wrap: wrap;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 2px solid #2563eb;
+  border-radius: 12px;
+  padding: 16px 20px;
 }
 
 .vp-stat {
