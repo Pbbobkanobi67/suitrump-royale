@@ -21,11 +21,8 @@
   border-radius: 12px;
   margin-bottom: 20px;
   font-size: 14px;
-}
-
-.videopoker-page .demo-mode-banner {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.1));
-  border: 1px solid #3b82f6;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.1));
+  border: 2px solid #2563eb;
 }
 
 .videopoker-page .demo-mode-banner .demo-icon {
@@ -36,11 +33,6 @@
   font-size: 12px;
 }
 
-.videopoker-page .testnet-mode-banner {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.1));
-  border: 1px solid #fbbf24;
-}
-
 .videopoker-page .testnet-mode-banner span:first-child {
   background: #fbbf24;
   color: #000;
@@ -48,11 +40,6 @@
   border-radius: 4px;
   font-weight: bold;
   font-size: 12px;
-}
-
-.videopoker-page .connect-wallet-banner {
-  background: linear-gradient(135deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.1));
-  border: 1px solid #94a3b8;
 }
 
 /* Header */
