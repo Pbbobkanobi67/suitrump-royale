@@ -92,7 +92,7 @@
 /* Blackjack Table */
 .blackjack-table {
   background: linear-gradient(135deg, #0d4d29 0%, #0a3d21 50%, #0d4d29 100%);
-  border: 8px solid #2d1810;
+  border: 4px solid #3b82f6;
   border-radius: 20px 20px 200px 200px;
   padding: 40px 60px;
   margin: 0 auto 30px;
@@ -104,8 +104,8 @@
   box-shadow:
     inset 0 0 100px rgba(0, 0, 0, 0.3),
     0 10px 40px rgba(0, 0, 0, 0.5),
-    0 0 0 4px #3b82f6,
-    0 0 30px rgba(59, 130, 246, 0.3);
+    0 0 0 2px rgba(96, 165, 250, 0.5),
+    0 0 40px rgba(59, 130, 246, 0.4);
   position: relative;
   outline: 2px solid rgba(96, 165, 250, 0.5);
   outline-offset: 6px;
