@@ -7,6 +7,8 @@ const BETTING_LIMITS_KEY = 'suitrumpRoyale_bettingLimits';
 // Default betting limits per game (in tickets, 1 ticket = $0.10)
 const DEFAULT_BETTING_LIMITS = {
   dice: { minBet: 1, maxBet: 10000 },
+  blackjack: { minBet: 1, maxBet: 1000 },
+  videopoker: { minBet: 1, maxBet: 500 },
   slots: { minBet: 1, maxBet: 5000 },
   crash: { minBet: 1, maxBet: 10000 },
   roulette: { minBet: 1, maxBet: 10000 },
@@ -56,6 +58,8 @@ const loadPlinkoSettings = () => {
 // Game icons mapping
 const GAME_ICONS = {
   dice: '🎲',
+  blackjack: '🃏',
+  videopoker: '🎴',
   progressive: '💎',
   raffle: '🎟️',
   slots: '🎰',
@@ -81,13 +85,37 @@ const DEFAULT_GAMES = [
     maxBet: '1000 SUIT'
   },
   {
+    id: 'blackjack',
+    name: 'SUITRUMP Blackjack',
+    description: 'Beat the dealer to 21 - Hit, Stand, Double, Split, Insurance, Surrender',
+    route: '/blackjack',
+    enabled: true,
+    featured: true,
+    sortOrder: 1,
+    houseEdge: '0.5%',
+    minBet: '1 SUIT',
+    maxBet: '1000 SUIT'
+  },
+  {
+    id: 'videopoker',
+    name: 'Video Poker',
+    description: 'Jacks or Better - Hold cards and draw for winning hands up to 800x',
+    route: '/videopoker',
+    enabled: true,
+    featured: true,
+    sortOrder: 2,
+    houseEdge: '0.5%',
+    minBet: '1 SUIT',
+    maxBet: '500 SUIT'
+  },
+  {
     id: 'progressive',
     name: 'Progressive Jackpot',
     description: 'Match 4 dice for the jackpot - growing prize pool',
     route: '/progressive',
     enabled: true,
     featured: true,
-    sortOrder: 1,
+    sortOrder: 3,
     houseEdge: '20%',
     ticketPrice: '1 SUIT'
   },
@@ -98,7 +126,7 @@ const DEFAULT_GAMES = [
     route: '/raffle',
     enabled: true,
     featured: true,
-    sortOrder: 2,
+    sortOrder: 4,
     houseEdge: '6%',
     minTickets: '5 SUIT'
   },
@@ -109,7 +137,7 @@ const DEFAULT_GAMES = [
     route: '/slots',
     enabled: true,
     featured: true,
-    sortOrder: 3,
+    sortOrder: 5,
     houseEdge: '5%',
     minBet: '1 SUIT',
     maxBet: '100 SUIT'
@@ -121,7 +149,7 @@ const DEFAULT_GAMES = [
     route: '/crash',
     enabled: true,
     featured: true,
-    sortOrder: 4,
+    sortOrder: 6,
     houseEdge: '4%',
     minBet: '1 SUIT',
     maxBet: '1000 SUIT'
@@ -133,7 +161,7 @@ const DEFAULT_GAMES = [
     route: '/plinko',
     enabled: true,
     featured: true,
-    sortOrder: 5,
+    sortOrder: 7,
     houseEdge: '3%',
     minBet: '1 SUIT',
     maxBet: '500 SUIT'
@@ -145,7 +173,7 @@ const DEFAULT_GAMES = [
     route: '/keno',
     enabled: true,
     featured: true,
-    sortOrder: 6,
+    sortOrder: 8,
     houseEdge: '10%',
     minBet: '1 SUIT',
     maxBet: '100 SUIT'
@@ -157,7 +185,7 @@ const DEFAULT_GAMES = [
     route: '/roulette',
     enabled: true,
     featured: true,
-    sortOrder: 7,
+    sortOrder: 9,
     houseEdge: '2.7%',
     minBet: '1 SUIT',
     maxBet: '500 SUIT'

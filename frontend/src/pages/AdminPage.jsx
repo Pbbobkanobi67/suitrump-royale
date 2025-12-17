@@ -282,6 +282,8 @@ function AdminPage() {
     roulette: { balance: '0', totalSpins: 0, totalWagered: '0', totalPaidOut: '0', isPaused: false },
     plinko: { balance: '0', totalDrops: 0, totalWagered: '0', totalPaidOut: '0', isPaused: false },
     keno: { balance: '0', totalGames: 0, totalWagered: '0', totalPaidOut: '0', isPaused: false },
+    blackjack: { balance: '0', totalGames: 0, totalWagered: '0', totalPaidOut: '0', isPaused: false },
+    videopoker: { balance: '0', totalGames: 0, totalWagered: '0', totalPaidOut: '0', isPaused: false },
     progressive: { balance: '0', jackpotPool: '0', totalRolls: 0, totalWagered: '0', isPaused: false },
     raffle: { prizePool: '0', roundId: 1, totalTickets: 0, status: 0, roundDurationMs: 21600000 }
   });
@@ -331,6 +333,8 @@ function AdminPage() {
       { key: 'roulette', objectId: SUI_CONFIG.games.roulette },
       { key: 'plinko', objectId: SUI_CONFIG.games.plinko },
       { key: 'keno', objectId: SUI_CONFIG.games.keno },
+      { key: 'blackjack', objectId: SUI_CONFIG.games.blackjack },
+      { key: 'videopoker', objectId: SUI_CONFIG.games.videopoker },
       { key: 'progressive', objectId: SUI_CONFIG.games.progressive },
       { key: 'raffle', objectId: SUI_CONFIG.games.raffle }
     ];
@@ -762,6 +766,8 @@ function AdminPage() {
         }}>
           {[
             { id: 'dice', name: 'Dice', icon: '🎲' },
+            { id: 'blackjack', name: 'Blackjack', icon: '🃏' },
+            { id: 'videopoker', name: 'Video Poker', icon: '🎴' },
             { id: 'progressive', name: 'Progressive', icon: '💎' },
             { id: 'raffle', name: 'Raffle', icon: '🎟️' },
             { id: 'slots', name: 'Slots', icon: '🎰' },
@@ -857,7 +863,7 @@ function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {['dice', 'slots', 'crash', 'roulette', 'plinko', 'keno'].map(game => {
+              {['dice', 'blackjack', 'videopoker', 'slots', 'crash', 'roulette', 'plinko', 'keno'].map(game => {
                 const stats = gameStats[game];
                 const volume = parseFloat(stats.totalWagered || '0');
                 const paidOut = parseFloat(stats.totalPaidOut || '0');
@@ -1169,6 +1175,8 @@ function AdminPage() {
               className="game-select game-select-large"
             >
               <option value="slots">Slots</option>
+              <option value="blackjack">Blackjack</option>
+              <option value="videopoker">Video Poker</option>
               <option value="crash">Crash</option>
               <option value="roulette">Roulette</option>
               <option value="plinko">Plinko</option>
@@ -1350,10 +1358,12 @@ function AdminPage() {
         </p>
 
         <div className="betting-limits-grid">
-          {['dice', 'slots', 'crash', 'roulette', 'plinko', 'keno', 'progressive', 'raffle'].map(gameId => {
+          {['dice', 'blackjack', 'videopoker', 'slots', 'crash', 'roulette', 'plinko', 'keno', 'progressive', 'raffle'].map(gameId => {
             const limits = bettingLimits[gameId] || { minBet: 1, maxBet: 10000 };
             const gameNames = {
               dice: '🎲 Dice',
+              blackjack: '🃏 Blackjack',
+              videopoker: '🎴 Video Poker',
               slots: '🎰 Slots',
               crash: '🚀 Crash',
               roulette: '🎡 Roulette',

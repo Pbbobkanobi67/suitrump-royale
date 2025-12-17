@@ -368,6 +368,169 @@ export function DocsPage() {
         </div>
       </div>
 
+      {/* SUITRUMP Blackjack */}
+      <div className={`docs-section ${!isGameEnabled('blackjack') ? 'game-disabled' : ''}`}>
+        <div className="section-header">
+          <span className="section-icon">🃏</span>
+          <h2>SUITRUMP Blackjack</h2>
+          {!isGameEnabled('blackjack') && <span className="game-status-badge disabled">Not Active</span>}
+        </div>
+
+        <div className="subsection">
+          <h3>Overview</h3>
+          <p>SUITRUMP Blackjack is a full-featured casino blackjack game. Beat the dealer by getting closer to 21 without going over. Features include Hit, Stand, Double Down, Split, Insurance, and Surrender.</p>
+        </div>
+
+        <div className="subsection">
+          <h3>How to Play</h3>
+          <ol className="steps-list">
+            <li><strong>Place your bet</strong> - Set your bet amount and click DEAL</li>
+            <li><strong>Receive cards</strong> - You get 2 cards face up, dealer gets 1 up and 1 down</li>
+            <li><strong>Make decisions</strong> - Hit, Stand, Double, Split, or Surrender</li>
+            <li><strong>Dealer plays</strong> - Dealer reveals hole card and must hit until 17+</li>
+            <li><strong>Collect winnings</strong> - Beat the dealer without busting to win!</li>
+          </ol>
+        </div>
+
+        <div className="subsection">
+          <h3>Card Values</h3>
+          <table className="docs-table">
+            <thead>
+              <tr>
+                <th>Card</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2-10</td>
+                <td>Face value</td>
+              </tr>
+              <tr>
+                <td>J, Q, K</td>
+                <td>10</td>
+              </tr>
+              <tr className="jackpot-row">
+                <td>Ace</td>
+                <td className="highlight-gold">1 or 11 (whichever is better)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="subsection">
+          <h3>Actions & When Available</h3>
+          <table className="docs-table">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>When Available</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span className="bet-badge exact">HIT</span></td>
+                <td>Anytime (not busted)</td>
+                <td>Take another card</td>
+              </tr>
+              <tr>
+                <td><span className="bet-badge over">STAND</span></td>
+                <td>Anytime</td>
+                <td>Keep your current hand</td>
+              </tr>
+              <tr>
+                <td><span className="bet-badge under">DOUBLE</span></td>
+                <td>First two cards only</td>
+                <td>Double bet, receive exactly one more card</td>
+              </tr>
+              <tr>
+                <td><span className="bet-badge odd">SPLIT</span></td>
+                <td>Pair of same value</td>
+                <td>Split into two separate hands (costs extra bet)</td>
+              </tr>
+              <tr>
+                <td><span className="bet-badge even">INSURANCE</span></td>
+                <td>Dealer shows Ace</td>
+                <td>Side bet (half your bet) pays 2:1 if dealer has blackjack</td>
+              </tr>
+              <tr>
+                <td><span className="bet-badge">SURRENDER</span></td>
+                <td>First two cards only</td>
+                <td>Forfeit half your bet to end the hand</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="subsection">
+          <h3>Payouts</h3>
+          <table className="docs-table">
+            <thead>
+              <tr>
+                <th>Result</th>
+                <th>Payout</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="jackpot-row">
+                <td>Blackjack (A + 10)</td>
+                <td className="highlight-gold">3:2 (1.5x your bet)</td>
+              </tr>
+              <tr>
+                <td>Win</td>
+                <td className="highlight-green">1:1 (even money)</td>
+              </tr>
+              <tr>
+                <td>Insurance (dealer blackjack)</td>
+                <td className="highlight-blue">2:1</td>
+              </tr>
+              <tr>
+                <td>Push (tie)</td>
+                <td>Bet returned</td>
+              </tr>
+              <tr>
+                <td>Surrender</td>
+                <td>Half bet returned</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="subsection">
+          <h3>Dealer Rules</h3>
+          <div className="info-list">
+            <div className="info-item">
+              <span className="info-label">Hit on 16:</span>
+              <span>Dealer must hit if hand value is 16 or less</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">Stand on 17:</span>
+              <span>Dealer must stand on 17 or higher (including soft 17)</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">Blackjack Check:</span>
+              <span>Dealer checks for blackjack when showing Ace or 10-value card</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="subsection">
+          <h3>House Edge Distribution</h3>
+          <p>SUITRUMP Blackjack has a 0.5% house edge (one of the lowest!), distributed as follows:</p>
+          <div className="distribution-boxes">
+            <div className="dist-box burn">
+              <span className="dist-value">0.2%</span>
+              <span className="dist-label">Burned (deflationary)</span>
+            </div>
+            <div className="dist-box treasury">
+              <span className="dist-value">0.3%</span>
+              <span className="dist-label">Treasury (ecosystem growth)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* SUITRUMP Keno */}
       <div className={`docs-section ${!isGameEnabled('keno') ? 'game-disabled' : ''}`}>
         <div className="section-header">

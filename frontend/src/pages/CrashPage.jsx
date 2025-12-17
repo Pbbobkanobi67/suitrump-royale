@@ -445,6 +445,16 @@ function CrashPage() {
         </div>
       )}
 
+      {/* Always show auto cash-out setting if enabled */}
+      {autoMode && (
+        <div className="auto-cashout-banner">
+          <span className="auto-icon">🤖</span>
+          <span className="auto-text">
+            Auto Cash-Out: <strong>{targetMultiplier}x</strong> = {(betAmount * targetMultiplier).toFixed(1)} tickets
+          </span>
+        </div>
+      )}
+
       <div className="crash-game">
         <div className={`crash-display ${gameState}`}>
           {/* Chart Background with Grid */}
@@ -726,7 +736,7 @@ function CrashPage() {
             )}
             <button
               className="action-btn cashout"
-              onClick={isDemoMode ? () => handleDemoCashOut() : handleCashOut}
+              onClick={isDemoMode ? () => handleDemoCashOut() : () => handleCashOut()}
               disabled={isProcessing || autoCashingOut}
             >
               {isProcessing || autoCashingOut ? 'Cashing out...' : `💰 CASH OUT @ ${formatMultiplier(displayMultiplier)}`}
@@ -791,6 +801,21 @@ function CrashPage() {
 
       <style>{`
         .crash-page { width: 100%; }
+
+        .auto-cashout-banner {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 12px 20px;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
+          border: 2px solid #3b82f6;
+          border-radius: 12px;
+          margin-bottom: 20px;
+        }
+        .auto-cashout-banner .auto-icon { font-size: 1.2rem; }
+        .auto-cashout-banner .auto-text { color: #94a3b8; font-size: 1rem; }
+        .auto-cashout-banner .auto-text strong { color: #3b82f6; font-size: 1.1rem; }
         .crash-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 16px; margin-bottom: 20px; border: 2px solid #2563eb; }
         .crash-title { display: flex; align-items: center; gap: 12px; }
         .crash-icon { font-size: 2.5rem; }

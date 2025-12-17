@@ -13,6 +13,8 @@ const STATIC_NAV = [
 // Game nav items - controlled by Game Manager (no Wheel)
 const GAME_NAV = [
   { id: 'dice', route: '/dice', icon: '🎲', name: 'Dice' },
+  { id: 'blackjack', route: '/blackjack', icon: '🃏', name: 'Blackjack' },
+  { id: 'videopoker', route: '/videopoker', icon: '🎴', name: 'Video Poker' },
   { id: 'progressive', route: '/progressive', icon: '💎', name: 'Progressive' },
   { id: 'raffle', route: '/raffle', icon: '🎟️', name: 'Raffle' },
   { id: 'slots', route: '/slots', icon: '🎰', name: 'Slots' },

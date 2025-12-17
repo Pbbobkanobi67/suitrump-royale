@@ -27,16 +27,17 @@ export const NETWORKS = {
       }
     },
 
-    // Game contracts (testnet deployments) - All deployed in package 0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677
+    // Game contracts (testnet deployments) - Most deployed in package 0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677
     contracts: {
-      raffle: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
+      raffle: '0x13257d34d094af055797f9089c6bc6d5be401e031be3f16841806e71ab877e65',  // Different package - raffle object was created with this
       dice: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
       slots: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
       crash: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
       plinko: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
       keno: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
       roulette: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
-      progressive: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677'
+      progressive: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
+      blackjack: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677'
     }
   },
 
@@ -61,7 +62,8 @@ export const NETWORKS = {
       plinko: null,
       keno: null,
       roulette: null,
-      progressive: null
+      progressive: null,
+      blackjack: null
     }
   }
 };
@@ -98,18 +100,22 @@ export const SUI_CONFIG = {
   packageIds: {
     tokens: '0xe8fd4cdccd697947bdb84f357eadb626bafac3db769c228336ebcd1ad6ca9081',
     games: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
+    treasury: '0x72984ab68ef32a4f683f67f05d0f3da2b71e31b812827e5183cda897a9d79793',
+    session: '0xa0c5cf929de72cd0eedc7eebcdc8e38550ca1cfa4862891b0290158477329026',
     cashier: '0x_CASHIER_PACKAGE_ID',
-    raffle: '0x13257d34d094af055797f9089c6bc6d5be401e031be3f16841806e71ab877e65',
+    raffle: '0x13257d34d094af055797f9089c6bc6d5be401e031be3f16841806e71ab877e65',  // Different package - raffle object was created with this
     dice: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
     progressive: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
     slots: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
     crash: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
     plinko: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
     keno: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
-    roulette: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677'
+    roulette: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677',
+    blackjack: '0x37fea8e22034d649d312806aa2a311fe728f793e09d52db7887ae5803ca2a677'
   },
 
   adminCaps: {
+    treasury: '0x9917315eab1a7ae8a58c90616fcda41fa3f4c913990c47f16263de87d175bcd3',
     raffle: '0x78878adc57a677d7c189ea51063d7e43ad82696d9838b6efd93a0bb6af2b4443',
     dice: '0x169aa34a59a288feaa610c1561ce21abf1f5cc4c24b982718a9336ecd829b571',
     slots: '0x1ed8daa44f95751371723b1d50b589f5fc9774ecd19f28c15c6fb7b0b13ab98c',
@@ -122,6 +128,7 @@ export const SUI_CONFIG = {
   },
 
   games: {
+    treasury: '0x64ed9c1f990988185b88e1f1e7379c38bfe79f753962258260f1a2d1e8d0f29e',
     cashier: '0x_CASHIER_OBJECT_ID',
     dice: '0x_DICE_OBJECT_ID',
     progressive: '0x_PROGRESSIVE_OBJECT_ID',
@@ -130,7 +137,8 @@ export const SUI_CONFIG = {
     crash: '0x_CRASH_OBJECT_ID',
     plinko: '0x_PLINKO_OBJECT_ID',
     keno: '0x_KENO_OBJECT_ID',
-    roulette: '0x_ROULETTE_OBJECT_ID'
+    roulette: '0x_ROULETTE_OBJECT_ID',
+    blackjack: '0x_BLACKJACK_OBJECT_ID'
   },
 
   // ECOSYSTEM WALLETS
@@ -162,7 +170,8 @@ export const SUI_CONFIG = {
     plinko: { minBet: 1, maxBet: 5000 },
     keno: { minBet: 1, maxBet: 2000 },
     progressive: { minBet: 1, maxBet: 100 },
-    raffle: { minBet: 1, maxBet: 10000 }
+    raffle: { minBet: 1, maxBet: 10000 },
+    blackjack: { minBet: 1, maxBet: 1000 }
   },
 
   tickets: {
@@ -188,6 +197,8 @@ export const getCurrentChainId = () => CHAIN_IDS[SUI_CONFIG.network];
 export const MODULES = {
   testSuitrump: 'test_suitrump',
   testVictory: 'test_victory',
+  treasury: 'suitrump_treasury',
+  session: 'suitrump_game_session',
   cashier: 'suitrump_cashier',
   dice: 'suitrump_dice',
   slots: 'suitrump_slots',
@@ -196,7 +207,8 @@ export const MODULES = {
   progressive: 'suitrump_progressive',
   raffle: 'suitrump_raffle',
   plinko: 'suitrump_plinko',
-  keno: 'suitrump_keno'
+  keno: 'suitrump_keno',
+  blackjack: 'suitrump_blackjack'
 };
 
 export const TOKEN_DECIMALS = 9;

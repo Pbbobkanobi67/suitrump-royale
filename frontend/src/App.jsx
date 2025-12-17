@@ -12,6 +12,8 @@ import CrashPage from './pages/CrashPage';
 import KenoPage from './pages/KenoPage';
 import PlinkoPage from './pages/PlinkoPage';
 import RoulettePage from './pages/RoulettePage';
+import BlackjackPage from './pages/BlackjackPage';
+import VideoPokerPage from './pages/VideoPokerPage';
 import FaucetPage from './pages/FaucetPage';
 import CashierPage from './pages/CashierPage';
 import PlayerStatsPage from './pages/PlayerStatsPage';
@@ -23,6 +25,7 @@ import { useWallet } from './hooks/useWallet';
 import { useDice, BetType, BetTypeLabels } from './hooks/useDice';
 import { useProgressive } from './hooks/useProgressive';
 import { useRaffle } from './hooks/useRaffle';
+import { useBlackjack } from './hooks/useBlackjack';
 import { useSuitrumpPrice } from './hooks/useSuitrumpPrice';
 
 // SUITRUMP Token address on Sui mainnet
@@ -60,8 +63,17 @@ function DemoModeHeader({ wallet, suitBalance, victoryBalance, isAdmin }) {
     connectedWallet
   } = useDemoContext();
 
-  // Get live SUITRUMP price
-  const { price: suitrumpPrice, poolData, loading: priceLoading } = useSuitrumpPrice();
+  // Get live SUITRUMP price with all indicators
+  const {
+    price: suitrumpPrice,
+    poolData,
+    loading: priceLoading,
+    priceDirection,
+    priceFlash,
+    significantChange,
+    lastUpdated,
+    priceSource
+  } = useSuitrumpPrice();
 
   const [showStats, setShowStats] = React.useState(false);
 
@@ -98,12 +110,26 @@ function DemoModeHeader({ wallet, suitBalance, victoryBalance, isAdmin }) {
         {!isDemoOnly && (
           <div className="header-center-stack">
             {/* Price Ticker Row */}
-            <div className="price-ticker-row">
+            <div className={`price-ticker-row ${priceFlash ? 'flash' : ''} ${significantChange || ''}`}>
               <span className="price-label">SUITRUMP</span>
-              <span className="price-value">${suitrumpPrice?.toFixed(8) || '...'}</span>
+              <span className={`price-value ${priceDirection || ''}`}>
+                {priceDirection === 'up' && <span className="direction-arrow up">▲</span>}
+                {priceDirection === 'down' && <span className="direction-arrow down">▼</span>}
+                ${suitrumpPrice?.toFixed(8) || '...'}
+              </span>
               {poolData?.priceChange24h !== undefined && (
                 <span className={`price-change ${poolData.priceChange24h >= 0 ? 'positive' : 'negative'}`}>
                   {poolData.priceChange24h >= 0 ? '+' : ''}{poolData.priceChange24h.toFixed(2)}%
+                </span>
+              )}
+              {significantChange && (
+                <span className={`significant-alert ${significantChange}`}>
+                  {significantChange === 'moon' ? '🚀 PUMP!' : '📉 DIP!'}
+                </span>
+              )}
+              {lastUpdated && (
+                <span className="price-updated-time" title={`Last updated: ${lastUpdated.toLocaleTimeString()}`}>
+                  {Math.floor((Date.now() - lastUpdated.getTime()) / 1000)}s ago
                 </span>
               )}
             </div>
@@ -199,6 +225,7 @@ function App() {
   const dice = useDice(wallet.signer);
   const progressive = useProgressive(wallet.signer);
   const raffle = useRaffle(wallet.signer, wallet.account);
+  const blackjack = useBlackjack(wallet.account);
   const [suitBalance, setSuitBalance] = useState('0');
   const [victoryBalance, setVictoryBalance] = useState('0');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -298,6 +325,8 @@ function App() {
                 <Route path="/keno" element={<KenoPage wallet={{ ...wallet, suitBalance }} />} />
                 <Route path="/plinko" element={<PlinkoPage wallet={wallet} />} />
                 <Route path="/roulette" element={<RoulettePage wallet={wallet} />} />
+                <Route path="/blackjack" element={<BlackjackPage blackjack={blackjack} />} />
+                <Route path="/videopoker" element={<VideoPokerPage />} />
                 <Route path="/history" element={<PlayerStatsPage wallet={wallet} dice={dice} progressive={progressive} raffle={raffle} />} />
                 <Route path="/admin" element={<AdminPage wallet={wallet} dice={dice} progressive={progressive} raffle={raffle} isAdmin={isAdmin} />} />
                 <Route path="/faucet" element={<FaucetPage wallet={wallet} />} />
